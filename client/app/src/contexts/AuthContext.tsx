@@ -1,35 +1,59 @@
-// client/src/contexts/AuthContext.tsx
+// src/contexts/AuthContext.tsx
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { setToken, getToken, removeToken, isAuthenticated as checkIsAuthenticated } from '../utils/auth';
+import { setToken, getToken, removeToken } from '../utils/auth';
+import api from '../utils/api';
+
+interface User {
+  id: string;
+  username: string;
+  role: string;
+}
 
 interface AuthContextType {
+  user: User | null;
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  login: (token: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuth, setIsAuth] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    setIsAuth(checkIsAuthenticated());
+    const token = getToken();
+    if (token) {
+      fetchUser();
+    }
   }, []);
 
-  const login = (token: string) => {
+  const fetchUser = async () => {
+    try {
+      const response = await api.get<User>('/auth/profile');
+      console.log('Fetched user:', response.data); // Add this line
+      setUser(response.data);
+    } catch (error) {
+      console.error('Failed to fetch user', error);
+      removeToken();
+    }
+  };
+
+  const login = async (token: string) => {
     setToken(token);
-    setIsAuth(true);
+    await fetchUser();
   };
 
   const logout = () => {
     removeToken();
-    setIsAuth(false);
+    setUser(null);
   };
 
+  console.log('Current user:', user); // Add this line
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated: isAuth, login, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
