@@ -14,7 +14,7 @@ services:
 
   auth:
     build: 
-      context: ./services/auth
+      context: ./services/auth/src
       dockerfile: Dockerfile
     ports:
       - "3001:3001"
