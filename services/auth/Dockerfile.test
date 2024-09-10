@@ -2,14 +2,11 @@ FROM node:20
 
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json
-COPY services/auth/package*.json ./
-
-# Install dependencies including devDependencies
+COPY package*.json ./
 RUN npm install
 
-# Copy the rest of the auth service code
-COPY services/auth .
+COPY . .
+RUN npm run build
 
-# Run tests
-CMD ["npm", "run", "test"]
+EXPOSE 3001
+CMD ["npm", "start"]
