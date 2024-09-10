@@ -1,5 +1,8 @@
 // services/auth/src/server.ts
 
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth';
@@ -7,11 +10,10 @@ import authRoutes from './routes/auth';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Enable CORS for all routes
 app.use(cors({
-  origin: 'http://localhost:3000', // Allow only our frontend origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allow specific methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
