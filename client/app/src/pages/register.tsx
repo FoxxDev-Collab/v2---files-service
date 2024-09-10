@@ -25,8 +25,13 @@ export default function Register() {
       const response = await api.post('/auth/register', { username, password });
       login(response.data.token);
       router.push('/dashboard');
-    } catch (err) {
-      setError('Registration failed. Username might already be taken.');
+    } catch (err: any) {
+      console.error('Registration error:', err.response?.data || err.message);
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Registration failed. Please try again.');
+      }
     }
   };
 

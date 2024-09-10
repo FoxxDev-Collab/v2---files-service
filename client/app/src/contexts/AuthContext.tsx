@@ -1,7 +1,7 @@
 // client/src/contexts/AuthContext.tsx
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { setToken, getToken, removeToken, isAuthenticated } from '../utils/auth';
+import { setToken, getToken, removeToken, isAuthenticated as checkIsAuthenticated } from '../utils/auth';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -15,7 +15,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuth, setIsAuth] = useState(false);
 
   useEffect(() => {
-    setIsAuth(isAuthenticated());
+    setIsAuth(checkIsAuthenticated());
   }, []);
 
   const login = (token: string) => {
