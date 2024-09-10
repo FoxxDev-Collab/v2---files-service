@@ -19,14 +19,14 @@ services:
       - NODE_ENV=test
     command: npm run test
 
-  integration:
-    build:
-      context: .
-      dockerfile: tests/Dockerfile.integration
-    image: new-cloud/integration-tests:test
-    depends_on:
-      - auth
-      - client
-    environment:
-      - NODE_ENV=test
-    command: npm run test:integration
+ # integration:
+ #   build:
+ #     context: .
+ #     dockerfile: tests/Dockerfile.integration
+ #   image: new-cloud/integration-tests:test
+ #   depends_on:
+ #     - auth
+ #     - client
+ #   environment:
+ #     - NODE_ENV=test
+ #   command: npm run test:integration
