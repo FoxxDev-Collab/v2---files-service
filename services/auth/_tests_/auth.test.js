@@ -1,6 +1,6 @@
 // services/auth/__tests__/auth.test.js
 const request = require('supertest');
-const app = require('../server'); // Assuming your Express app is exported from server.js
+const app = require('../src/server'); // Assuming your Express app is exported from server.js
 
 describe('Auth Service', () => {
   test('POST /register should create a new user', async () => {
