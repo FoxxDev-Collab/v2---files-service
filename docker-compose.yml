@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  auth:
+    build: 
+      context: .
+      dockerfile: services/auth/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+
+  client:
+    build:
+      context: .
+      dockerfile: client/app/Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth
