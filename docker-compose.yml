@@ -1,6 +1,17 @@
-version: '3'
+version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: newcloud
+      POSTGRES_USER: newcloud_user
+      POSTGRES_PASSWORD: NOTthisday@@22
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
   auth:
     build: 
       context: .
@@ -9,6 +20,15 @@ services:
       - "3001:3001"
     environment:
       - NODE_ENV=production
+      - DB_USER=newcloud_user
+      - DB_HOST=postgres
+      - DB_NAME=newcloud
+      - DB_PASSWORD=NOTthisday@@22
+      - DB_PORT=5432
+      - JWT_SECRET=your_jwt_secret
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      - postgres
 
   client:
     build:
@@ -16,5 +36,10 @@ services:
       dockerfile: client/app/Dockerfile
     ports:
       - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
     depends_on:
       - auth
+
+volumes:
+  postgres_data:
