@@ -1,23 +1,33 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { useAuth } from '../contexts/AuthContext';
+import api from '../utils/api';
 
 export default function Register() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
     if (password !== confirmPassword) {
-      alert("Passwords don't match");
+      setError("Passwords don't match");
       return;
     }
-    // TODO: Implement actual registration logic
-    console.log('Registration attempted with:', username, password);
-    // For now, just redirect to dashboard
-    router.push('/dashboard');
+
+    try {
+      const response = await api.post('/auth/register', { username, password });
+      login(response.data.token);
+      router.push('/dashboard');
+    } catch (err) {
+      setError('Registration failed. Username might already be taken.');
+    }
   };
 
   return (
@@ -71,6 +81,8 @@ export default function Register() {
               />
             </div>
           </div>
+
+          {error && <div className="text-red-500 text-sm">{error}</div>}
 
           <div>
             <button

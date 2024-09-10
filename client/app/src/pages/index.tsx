@@ -1,18 +1,27 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { useAuth } from '../contexts/AuthContext';
+import api from '../utils/api';
 
 export default function Home() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual login logic
-    console.log('Login attempted with:', username, password);
-    // For now, just redirect to dashboard
-    router.push('/dashboard');
+    setError('');
+
+    try {
+      const response = await api.post('/auth/login', { username, password });
+      login(response.data.token);
+      router.push('/dashboard');
+    } catch (err) {
+      setError('Invalid username or password');
+    }
   };
 
   return (
@@ -53,6 +62,8 @@ export default function Home() {
               />
             </div>
           </div>
+
+          {error && <div className="text-red-500 text-sm">{error}</div>}
 
           <div>
             <button
