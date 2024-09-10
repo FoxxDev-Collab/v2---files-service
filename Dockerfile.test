@@ -1,0 +1,15 @@
+FROM node:20
+
+WORKDIR /usr/src/app
+
+# Copy package.json and package-lock.json
+COPY tests/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the integration test files
+COPY tests .
+
+# Run integration tests
+CMD ["npm", "run", "test:integration"]

@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  auth:
+    build: 
+      context: .
+      dockerfile: services/auth/Dockerfile.test
+    image: new-cloud/auth:test
+    environment:
+      - NODE_ENV=test
+    command: npm run test
+
+  client:
+    build:
+      context: .
+      dockerfile: client/app/Dockerfile.test
+    image: new-cloud/client:test
+    environment:
+      - NODE_ENV=test
+    command: npm run test
+
+  integration:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.integration
+    image: new-cloud/integration-tests:test
+    depends_on:
+      - auth
+      - client
+    environment:
+      - NODE_ENV=test
+    command: npm run test:integration
