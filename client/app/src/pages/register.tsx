@@ -6,6 +6,7 @@ import api from '../utils/api';
 
 export default function Register() {
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,7 +23,7 @@ export default function Register() {
     }
 
     try {
-      const response = await api.post('/auth/register', { username, password });
+      const response = await api.post('/auth/register', { username, email, password });
       login(response.data.token);
       router.push('/dashboard');
     } catch (err: any) {
@@ -57,6 +58,19 @@ export default function Register() {
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="email" className="sr-only">Email</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div>

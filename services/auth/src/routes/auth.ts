@@ -8,40 +8,43 @@ import pool from '../db';
 const router = express.Router();
 
 router.post('/register', async (req, res) => {
-    const { username, password, email } = req.body;
-  
-    try {
-      // Check if user already exists
-      const userCheck = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-      if (userCheck.rows.length > 0) {
-        return res.status(400).json({ message: 'User already exists' });
-      }
-  
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-  
-      // Get the 'user' role id
-      const roleResult = await pool.query('SELECT id FROM roles WHERE name = $1', ['user']);
-      if (roleResult.rows.length === 0) {
-        return res.status(500).json({ message: 'Default role not found' });
-      }
-      const roleId = roleResult.rows[0].id;
-  
-      // Insert new user with the 'user' role
-      const newUser = await pool.query(
-        'INSERT INTO users (username, password, email, role_id) VALUES ($1, $2, $3, $4) RETURNING id, username',
-        [username, hashedPassword, email, roleId]
-      );
-  
-      const token = generateToken({ id: newUser.rows[0].id, username: newUser.rows[0].username });
-      res.status(201).json({ token });
-    } catch (error) {
-      console.error('Registration error:', error);
-      res.status(500).json({ message: 'Server error' });
+  const { username, email, password } = req.body;
+
+  if (!username || !email || !password) {
+    return res.status(400).json({ message: 'Username, email, and password are required' });
+  }
+
+  try {
+    // Check if user already exists
+    const userCheck = await pool.query('SELECT * FROM users WHERE username = $1 OR email = $2', [username, email]);
+    if (userCheck.rows.length > 0) {
+      return res.status(400).json({ message: 'Username or email already exists' });
     }
-  });
-  
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Get the 'user' role id
+    const roleResult = await pool.query('SELECT id FROM roles WHERE name = $1', ['user']);
+    if (roleResult.rows.length === 0) {
+      return res.status(500).json({ message: 'Default role not found' });
+    }
+    const roleId = roleResult.rows[0].id;
+
+    // Insert new user with the 'user' role
+    const newUser = await pool.query(
+      'INSERT INTO users (username, email, password, role_id) VALUES ($1, $2, $3, $4) RETURNING id, username',
+      [username, email, hashedPassword, roleId]
+    );
+
+    const token = generateToken({ id: newUser.rows[0].id, username: newUser.rows[0].username });
+    res.status(201).json({ token });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Server error during registration' });
+  }
+});
 
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
