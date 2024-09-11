@@ -208,7 +208,9 @@ const handleAvatarUpload = async () => {
     <Image
       src={profile.profilePictureUrl || '/default-avatar.png'}
       alt="Profile"
-      className="w-32 h-32 rounded-full mx-auto"
+      width={40}
+      height={40}
+      className="rounded-full cursor-pointer"
     />
   </div>
   <div className="mb-4">
