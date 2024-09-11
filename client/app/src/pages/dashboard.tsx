@@ -28,8 +28,8 @@ export default function Dashboard() {
                 <div className="flex flex-col items-center justify-center h-full">
                   <h2 className="text-2xl font-semibold mb-4">Welcome to Your Dashboard</h2>
                   <p className="mb-4">Here you can access all New Cloud services.</p>
-                  <Link href="/profile" className="text-indigo-600 hover:text-indigo-500">
-                    View Profile
+                  <Link href="/settings" className="text-indigo-600 hover:text-indigo-500">
+                    View/Update Your Profile
                   </Link>
                 </div>
               </div>

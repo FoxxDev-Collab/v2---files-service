@@ -19,16 +19,41 @@ const auth_1 = require("../auth");
 const db_1 = __importDefault(require("../db"));
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const router = express_1.default.Router();
 const storage = multer_1.default.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/');
+        cb(null, path_1.default.join(__dirname, '..', 'uploads'));
     },
     filename: function (req, file, cb) {
-        cb(null, Date.now() + path_1.default.extname(file.originalname)); //Appending extension
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path_1.default.extname(file.originalname));
     }
 });
 const upload = (0, multer_1.default)({ storage: storage });
+const uploadDir = path_1.default.join(__dirname, '..', 'uploads');
+if (!fs_1.default.existsSync(uploadDir)) {
+    fs_1.default.mkdirSync(uploadDir, { recursive: true });
+}
+router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+    }
+    try {
+        const userId = req.user.id;
+        const profilePictureUrl = `/uploads/${req.file.filename}`;
+        // Log the file details for debugging
+        console.log('File uploaded:', req.file);
+        console.log('Profile picture URL:', profilePictureUrl);
+        // Update the user's profile picture URL in the database
+        yield db_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+        res.json({ profilePictureUrl });
+    }
+    catch (error) {
+        console.error('Avatar upload error:', error);
+        res.status(500).json({ message: 'Server error during avatar upload' });
+    }
+}));
 router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, email, password, firstName, lastName, timezone } = req.body;
     if (!username || !password || !firstName || !lastName) {
@@ -164,6 +189,21 @@ router.put('/change-password', auth_1.authMiddleware, (req, res) => __awaiter(vo
     catch (error) {
         console.error('Password change error:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+}));
+router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+    }
+    try {
+        const userId = req.user.id;
+        const profilePictureUrl = `/uploads/${req.file.filename}`; // This should be a URL, not a file path
+        yield db_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+        res.json({ profilePictureUrl });
+    }
+    catch (error) {
+        console.error('Avatar upload error:', error);
+        res.status(500).json({ message: 'Server error during avatar upload' });
     }
 }));
 const isSiteAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {

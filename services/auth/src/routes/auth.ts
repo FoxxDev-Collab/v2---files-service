@@ -11,10 +11,11 @@ import fs from 'fs';
 const router = express.Router();
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadDir);
+    cb(null, path.join(__dirname, '..', 'uploads'));
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname));
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -34,8 +35,12 @@ router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (re
 
   try {
     const userId = (req as any).user.id;
-    const profilePictureUrl = `/uploads/${req.file.filename}`; // This should be a URL, not a file path
+    const profilePictureUrl = `/uploads/${req.file.filename}`;
     
+    // Log the file details for debugging
+    console.log('File uploaded:', req.file);
+    console.log('Profile picture URL:', profilePictureUrl);
+    // Update the user's profile picture URL in the database
     await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
     
     res.json({ profilePictureUrl });

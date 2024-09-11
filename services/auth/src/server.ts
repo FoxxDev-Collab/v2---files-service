@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth';
 import path from 'path';
+import { Pool } from 'pg';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,3 +27,13 @@ app.listen(PORT, () => {
 });
 
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))
+
+const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: String(process.env.DB_PASSWORD), // Explicitly cast to string
+  port: parseInt(process.env.DB_PORT || '5432'),
+});
+
+export default pool;
