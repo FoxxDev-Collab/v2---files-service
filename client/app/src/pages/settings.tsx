@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 import ProtectedRoute from '../components/ProtectedRoute';
+import Image from 'next/image';
 
 interface UserProfile {
   id: string;
@@ -204,7 +205,7 @@ const handleAvatarUpload = async () => {
               <div className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
   <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Profile Picture</h2>
   <div className="mb-4">
-    <img
+    <Image
       src={profile.profilePictureUrl || '/default-avatar.png'}
       alt="Profile"
       className="w-32 h-32 rounded-full mx-auto"

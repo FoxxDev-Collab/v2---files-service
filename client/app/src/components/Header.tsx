@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();
@@ -39,10 +40,12 @@ const Header: React.FC = () => {
                 Logout
               </button>
               <div className="relative group">
-                <img
+                <Image
                   src={user.profilePictureUrl || '/default-avatar.png'}
                   alt="Profile"
-                  className="w-10 h-10 rounded-full cursor-pointer"
+                  width={40}
+                  height={40}
+                  className="rounded-full cursor-pointer"
                 />
               </div>
             </div>

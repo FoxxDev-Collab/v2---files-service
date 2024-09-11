@@ -76,7 +76,7 @@ export default function Home() {
         </form>
         <div className="text-center">
           <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-            Don't have an account? Register here
+            Do you need an account? Register here
           </Link>
         </div>
       </div>
