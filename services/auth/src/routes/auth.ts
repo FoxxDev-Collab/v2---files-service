@@ -3,7 +3,7 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import { generateToken, authMiddleware } from '../auth';
-import pool from '../db';
+import pool from '../server';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';

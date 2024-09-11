@@ -16,7 +16,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const auth_1 = require("../auth");
-const db_1 = __importDefault(require("../db"));
+const server_1 = __importDefault(require("../../server"));
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -46,7 +46,7 @@ router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (r
         console.log('File uploaded:', req.file);
         console.log('Profile picture URL:', profilePictureUrl);
         // Update the user's profile picture URL in the database
-        yield db_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+        yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
         res.json({ profilePictureUrl });
     }
     catch (error) {
@@ -61,13 +61,13 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
     }
     try {
         // Check if user already exists
-        const userCheck = yield db_1.default.query('SELECT * FROM users WHERE username = $1', [username]);
+        const userCheck = yield server_1.default.query('SELECT * FROM users WHERE username = $1', [username]);
         if (userCheck.rows.length > 0) {
             return res.status(400).json({ message: 'Username already exists' });
         }
         // Check if email exists if provided
         if (email) {
-            const emailCheck = yield db_1.default.query('SELECT * FROM users WHERE email = $1', [email]);
+            const emailCheck = yield server_1.default.query('SELECT * FROM users WHERE email = $1', [email]);
             if (emailCheck.rows.length > 0) {
                 return res.status(400).json({ message: 'Email already in use' });
             }
@@ -76,13 +76,13 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
         const salt = yield bcrypt_1.default.genSalt(10);
         const hashedPassword = yield bcrypt_1.default.hash(password, salt);
         // Get the 'user' role id
-        const roleResult = yield db_1.default.query('SELECT id FROM roles WHERE name = $1', ['user']);
+        const roleResult = yield server_1.default.query('SELECT id FROM roles WHERE name = $1', ['user']);
         if (roleResult.rows.length === 0) {
             return res.status(500).json({ message: 'Default role not found' });
         }
         const roleId = roleResult.rows[0].id;
         // Insert new user with the 'user' role
-        const newUser = yield db_1.default.query('INSERT INTO users (username, email, password, first_name, last_name, timezone, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username', [username, email || null, hashedPassword, firstName, lastName, timezone || 'America/Boise', roleId]);
+        const newUser = yield server_1.default.query('INSERT INTO users (username, email, password, first_name, last_name, timezone, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username', [username, email || null, hashedPassword, firstName, lastName, timezone || 'America/Boise', roleId]);
         const token = (0, auth_1.generateToken)({ id: newUser.rows[0].id, username: newUser.rows[0].username });
         res.status(201).json({ token });
     }
@@ -94,7 +94,7 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
 router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
     try {
-        const user = yield db_1.default.query('SELECT * FROM users WHERE username = $1', [username]);
+        const user = yield server_1.default.query('SELECT * FROM users WHERE username = $1', [username]);
         if (user.rows.length === 0) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
@@ -129,7 +129,7 @@ router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* 
 router.get('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;
-        const result = yield db_1.default.query('SELECT u.id, u.username, u.email, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
+        const result = yield server_1.default.query('SELECT u.id, u.username, u.email, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -147,13 +147,13 @@ router.put('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, vo
         const { username, email } = req.body;
         // Check if username already exists
         if (username) {
-            const usernameCheck = yield db_1.default.query('SELECT id FROM users WHERE username = $1 AND id != $2', [username, userId]);
+            const usernameCheck = yield server_1.default.query('SELECT id FROM users WHERE username = $1 AND id != $2', [username, userId]);
             if (usernameCheck.rows.length > 0) {
                 return res.status(400).json({ message: 'Username already taken' });
             }
         }
         // Update user profile
-        const result = yield db_1.default.query('UPDATE users SET username = COALESCE($1, username), email = COALESCE($2, email) WHERE id = $3 RETURNING id, username, email', [username, email, userId]);
+        const result = yield server_1.default.query('UPDATE users SET username = COALESCE($1, username), email = COALESCE($2, email) WHERE id = $3 RETURNING id, username, email', [username, email, userId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -169,7 +169,7 @@ router.put('/change-password', auth_1.authMiddleware, (req, res) => __awaiter(vo
         const userId = req.user.id;
         const { currentPassword, newPassword } = req.body;
         // Fetch the user from the database
-        const userResult = yield db_1.default.query('SELECT * FROM users WHERE id = $1', [userId]);
+        const userResult = yield server_1.default.query('SELECT * FROM users WHERE id = $1', [userId]);
         if (userResult.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -183,7 +183,7 @@ router.put('/change-password', auth_1.authMiddleware, (req, res) => __awaiter(vo
         const salt = yield bcrypt_1.default.genSalt(10);
         const hashedNewPassword = yield bcrypt_1.default.hash(newPassword, salt);
         // Update the password in the database
-        yield db_1.default.query('UPDATE users SET password = $1 WHERE id = $2', [hashedNewPassword, userId]);
+        yield server_1.default.query('UPDATE users SET password = $1 WHERE id = $2', [hashedNewPassword, userId]);
         res.json({ message: 'Password updated successfully' });
     }
     catch (error) {
@@ -198,7 +198,7 @@ router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (r
     try {
         const userId = req.user.id;
         const profilePictureUrl = `/uploads/${req.file.filename}`; // This should be a URL, not a file path
-        yield db_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+        yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
         res.json({ profilePictureUrl });
     }
     catch (error) {
@@ -209,7 +209,7 @@ router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (r
 const isSiteAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const userId = req.user.id;
-    const result = yield db_1.default.query('SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
+    const result = yield server_1.default.query('SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
     if (((_a = result.rows[0]) === null || _a === void 0 ? void 0 : _a.name) === 'site_admin') {
         next();
     }
@@ -221,7 +221,7 @@ const isSiteAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
 const isAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _b;
     const userId = req.user.id;
-    const result = yield db_1.default.query('SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
+    const result = yield server_1.default.query('SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
     if (['site_admin', 'application_admin'].includes((_b = result.rows[0]) === null || _b === void 0 ? void 0 : _b.name)) {
         next();
     }
@@ -232,7 +232,7 @@ const isAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
 // Route to get all users (admin only)
 router.get('/users', auth_1.authMiddleware, isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const result = yield db_1.default.query('SELECT u.id, u.username, u.email, r.name as role FROM users u JOIN roles r ON u.role_id = r.id');
+        const result = yield server_1.default.query('SELECT u.id, u.username, u.email, r.name as role FROM users u JOIN roles r ON u.role_id = r.id');
         res.json(result.rows);
     }
     catch (error) {
@@ -245,12 +245,12 @@ router.put('/users/:id/role', auth_1.authMiddleware, isSiteAdmin, (req, res) => 
     const { id } = req.params;
     const { role } = req.body;
     try {
-        const roleResult = yield db_1.default.query('SELECT id FROM roles WHERE name = $1', [role]);
+        const roleResult = yield server_1.default.query('SELECT id FROM roles WHERE name = $1', [role]);
         if (roleResult.rows.length === 0) {
             return res.status(400).json({ message: 'Invalid role' });
         }
         const roleId = roleResult.rows[0].id;
-        yield db_1.default.query('UPDATE users SET role_id = $1 WHERE id = $2', [roleId, id]);
+        yield server_1.default.query('UPDATE users SET role_id = $1 WHERE id = $2', [roleId, id]);
         res.json({ message: 'User role updated successfully' });
     }
     catch (error) {
@@ -267,12 +267,12 @@ router.put('/users/:id/role', auth_1.authMiddleware, isSiteAdmin, (req, res) => 
         if (!validRoles.includes(role)) {
             return res.status(400).json({ message: 'Invalid role' });
         }
-        const roleResult = yield db_1.default.query('SELECT id FROM roles WHERE name = $1', [role]);
+        const roleResult = yield server_1.default.query('SELECT id FROM roles WHERE name = $1', [role]);
         if (roleResult.rows.length === 0) {
             return res.status(400).json({ message: 'Invalid role' });
         }
         const roleId = roleResult.rows[0].id;
-        yield db_1.default.query('UPDATE users SET role_id = $1 WHERE id = $2', [roleId, id]);
+        yield server_1.default.query('UPDATE users SET role_id = $1 WHERE id = $2', [roleId, id]);
         res.json({ message: 'User role updated successfully' });
     }
     catch (error) {
@@ -287,7 +287,7 @@ router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (r
     try {
         const userId = req.user.id;
         const profilePictureUrl = `/uploads/${req.file.filename}`;
-        yield db_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+        yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
         res.json({ profilePictureUrl });
     }
     catch (error) {
@@ -300,7 +300,7 @@ router.put('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, vo
     try {
         const userId = req.user.id;
         const { firstName, lastName, email, timezone } = req.body;
-        const result = yield db_1.default.query('UPDATE users SET first_name = $1, last_name = $2, email = $3, timezone = $4 WHERE id = $5 RETURNING id, username, email, first_name, last_name, timezone, profile_picture_url', [firstName, lastName, email, timezone, userId]);
+        const result = yield server_1.default.query('UPDATE users SET first_name = $1, last_name = $2, email = $3, timezone = $4 WHERE id = $5 RETURNING id, username, email, first_name, last_name, timezone, profile_picture_url', [firstName, lastName, email, timezone, userId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -318,7 +318,7 @@ router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (r
     try {
         const userId = req.user.id;
         const profilePictureUrl = `/uploads/${req.file.filename}`;
-        yield db_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+        yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
         res.json({ profilePictureUrl });
     }
     catch (error) {

@@ -10,7 +10,7 @@ const dbConfig = {
   database: process.env.DB_NAME,
 };
 
-const databaseUrl = `postgres://${dbConfig.user}:${encodeURIComponent(dbConfig.password)}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}?search_path=newcloud_schema,public`;
+const databaseUrl = `postgres://${dbConfig.user}:${encodeURIComponent(dbConfig.password)}@${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`;
 
 async function runMigration() {
   try {
