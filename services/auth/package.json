@@ -7,7 +7,7 @@
     "dev": "nodemon src/server.ts",
     "build": "tsc",
     "watch": "tsc -w",
-    "migrate": "node-pg-migrate",
+    "migrate": "node -r dotenv/config ./node_modules/.bin/node-pg-migrate",
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down"
   },
@@ -15,7 +15,6 @@
     "auth-service": "file:",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
     "express": "^5.0.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1"
@@ -28,6 +27,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^16.11.6",
     "@types/pg": "^8.11.8",
+    "dotenv": "^16.4.5",
     "node-pg-migrate": "^7.6.1",
     "nodemon": "^3.1.0",
     "pg": "^8.12.0",

@@ -1,10 +1,10 @@
 {
     "dev": {
       "driver": "pg",
-      "user": {"ENV": "DB_USER"},
-      "password": {"ENV": "DB_PASSWORD"},
-      "host": {"ENV": "DB_HOST"},
-      "database": {"ENV": "DB_NAME"},
-      "port": {"ENV": "DB_PORT"}
+      "user": "newcloud_user",
+      "password": "NOTthisday@@22",
+      "host": "localhost",
+      "database": "newcloud",
+      "port": "5432"
     }
   }
