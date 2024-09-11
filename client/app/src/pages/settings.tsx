@@ -25,12 +25,13 @@ const Settings: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [darkMode, setDarkMode] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedPictures, setUploadedPictures] = useState<string[]>([]);
   const router = useRouter();
   const { user, logout, updateUser } = useAuth();
 
   useEffect(() => {
     fetchProfile();
-    // Load dark mode preference from localStorage
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
     setDarkMode(savedDarkMode);
     if (savedDarkMode) {
@@ -59,7 +60,6 @@ const Settings: React.FC = () => {
     try {
       const response = await api.put<UserProfile>('/auth/profile', profile);
       setProfile(response.data);
-      // Only update the user context with the fields that are in the User type
       updateUser({
         id: response.data.id,
         username: response.data.username,
@@ -68,7 +68,7 @@ const Settings: React.FC = () => {
         lastName: response.data.lastName,
         role: response.data.role,
         profilePictureUrl: response.data.profilePictureUrl,
-        timezone: ''
+        timezone: response.data.timezone
       });
       setSuccessMessage('Profile updated successfully');
     } catch (err) {
@@ -101,39 +101,51 @@ const Settings: React.FC = () => {
       setSelectedFile(e.target.files[0]);
     }
   };
-  
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  
-  // In Settings.tsx
 
-const handleAvatarUpload = async () => {
-  if (selectedFile && profile) {
-    const formData = new FormData();
-    formData.append('avatar', selectedFile);
-    try {
-      const response = await api.post<{ profilePictureUrl: string }>('/auth/upload-avatar', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const newProfilePictureUrl = response.data.profilePictureUrl;
-      setProfile({ ...profile, profilePictureUrl: newProfilePictureUrl });
-      updateUser({
-        profilePictureUrl: newProfilePictureUrl,
-        id: '',
-        username: '',
-        email: '',
-        firstName: '',
-        lastName: '',
-        timezone: '',
-        role: ''
-      });
-      setSuccessMessage('Avatar uploaded successfully');
-      setSelectedFile(null);
-    } catch (err) {
-      console.error('Failed to upload avatar', err);
-      setError('Failed to upload avatar');
+  const handleAvatarUpload = async () => {
+    if (selectedFile && profile) {
+      const formData = new FormData();
+      formData.append('avatar', selectedFile);
+      try {
+        const response = await api.post<{ profilePictureUrl: string }>('/auth/upload-avatar', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        const newProfilePictureUrl = response.data.profilePictureUrl;
+        setUploadedPictures(prev => [...prev, newProfilePictureUrl]);
+        setSelectedFile(null);
+        setSuccessMessage('Avatar uploaded successfully');
+      } catch (err) {
+        console.error('Failed to upload avatar', err);
+        setError('Failed to upload avatar');
+      }
     }
-  }
-};
+  };
+
+  const handleSetProfilePicture = async (pictureUrl: string) => {
+    try {
+      await api.put('/auth/set-profile-picture', { profilePictureUrl: pictureUrl });
+      setProfile(prev => prev ? { ...prev, profilePictureUrl: pictureUrl } : null);
+      updateUser({
+        ...user!,
+        profilePictureUrl: pictureUrl
+      });
+      setSuccessMessage('Profile picture updated successfully');
+    } catch (err) {
+      console.error('Failed to set profile picture', err);
+      setError('Failed to set profile picture');
+    }
+  };
+
+  const handleDeletePicture = async (pictureUrl: string) => {
+    try {
+      await api.delete(`/auth/delete-picture`, { data: { pictureUrl } });
+      setUploadedPictures(prev => prev.filter(url => url !== pictureUrl));
+      setSuccessMessage('Picture deleted successfully');
+    } catch (err) {
+      console.error('Failed to delete picture', err);
+      setError('Failed to delete picture');
+    }
+  };
 
   const handleDarkModeToggle = () => {
     const newDarkMode = !darkMode;
@@ -164,21 +176,10 @@ const handleAvatarUpload = async () => {
           {successMessage && <p className="text-green-500 mb-4">{successMessage}</p>}
           {profile && (
             <div className="space-y-8">
+              {/* Profile Information Form */}
               <form onSubmit={handleProfileUpdate} className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
                 <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Profile Information</h2>
-                <div className="mb-4">
-                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="username">
-                    Username
-                  </label>
-                  <input
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    id="username"
-                    type="text"
-                    value={profile.username}
-                    onChange={(e) => setProfile({ ...profile, username: e.target.value })}
-                  />
-                </div>
-                {/* Add similar input fields for email, firstName, lastName, and timezone */}
+                {/* Add input fields for username, email, firstName, lastName, and timezone */}
                 <div className="flex items-center justify-between">
                   <button
                     className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
@@ -189,6 +190,7 @@ const handleAvatarUpload = async () => {
                 </div>
               </form>
 
+              {/* Password Change Form */}
               <form onSubmit={handlePasswordChange} className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
                 <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Change Password</h2>
                 {/* Add input fields for currentPassword, newPassword, and confirmNewPassword */}
@@ -202,43 +204,70 @@ const handleAvatarUpload = async () => {
                 </div>
               </form>
 
+              {/* Profile Picture Section */}
               <div className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
-  <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Profile Picture</h2>
-  <div className="mb-4">
-    <Image
-      src={profile.profilePictureUrl || '/default-avatar.png'}
-      alt="Profile"
-      width={40}
-      height={40}
-      className="rounded-full cursor-pointer"
-    />
-  </div>
-  <div className="mb-4">
-    <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="avatar">
-      Select new profile picture
-    </label>
-    <input
-      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-      id="avatar"
-      type="file"
-      accept="image/*"
-      onChange={handleFileSelect}
-    />
-  </div>
-  {selectedFile && (
-    <div className="mb-4">
-      <p className="text-sm text-gray-600 dark:text-gray-400">Selected file: {selectedFile.name}</p>
-    </div>
-  )}
-  <button
-    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-    onClick={handleAvatarUpload}
-    disabled={!selectedFile}
-  >
-    Upload and Save Profile Picture
-  </button>
-</div>
+                <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Profile Picture</h2>
+                <div className="flex flex-wrap">
+                  {/* Current Profile Picture */}
+                  <div className="w-1/3 pr-4">
+                    <h3 className="text-lg font-semibold mb-2">Current Picture</h3>
+                    <Image
+                      src={profile.profilePictureUrl || '/default-avatar.png'}
+                      alt="Profile"
+                      width={200}
+                      height={200}
+                      className="rounded-full"
+                    />
+                  </div>
+                  <div className="w-2/3">
+                    <h3 className="text-lg font-semibold mb-2">Other Pictures</h3>
+                    <div className="flex flex-wrap">
+                      {uploadedPictures.map((pictureUrl, index) => (
+                        <div key={index} className="relative m-2">
+                          <Image
+                            src={pictureUrl}
+                            alt={`Uploaded ${index + 1}`}
+                            width={100}
+                            height={100}
+                            className="rounded-md"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => handleSetProfilePicture(pictureUrl)}
+                              className="bg-blue-500 text-white px-2 py-1 rounded text-sm mr-2"
+                            >
+                              Set as Profile
+                            </button>
+                            <button
+                              onClick={() => handleDeletePicture(pictureUrl)}
+                              className="bg-red-500 text-white px-2 py-1 rounded text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="mb-2"
+                  />
+                  <button
+                    onClick={handleAvatarUpload}
+                    disabled={!selectedFile}
+                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
+                  >
+                    Upload New Picture
+                  </button>
+                </div>
+              </div>
 
+              {/* Dark Mode Toggle */}
               <div className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
                 <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Application Settings</h2>
                 <div className="flex items-center justify-between">
