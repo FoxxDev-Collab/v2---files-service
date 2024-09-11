@@ -24,6 +24,9 @@ const Header: React.FC = () => {
               <Link href="/dashboard" className="text-gray-800 hover:text-blue-500">
                 Dashboard
               </Link>
+              <Link href="/settings" className="text-gray-800 hover:text-blue-500">
+                Settings
+              </Link>
               {user.role === 'site_admin' && (
                 <Link href="/admin/users" className="text-gray-800 hover:text-blue-500">
                   Manage Users
@@ -41,17 +44,6 @@ const Header: React.FC = () => {
                   alt="Profile"
                   className="w-10 h-10 rounded-full cursor-pointer"
                 />
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
-                  <Link href="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Settings
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Logout
-                  </button>
-                </div>
               </div>
             </div>
           )}

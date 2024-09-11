@@ -11,6 +11,9 @@ RUN npm install
 # Copy the rest of the client code
 COPY . .
 
+# Set NODE_ENV to production
+ENV NODE_ENV production
+
 # Build the Next.js app
 RUN npm run build
 
@@ -18,4 +21,4 @@ RUN npm run build
 EXPOSE 3000
 
 # Command to run the application
-CMD [ "npm", "start" ]
+CMD ["npm", "start"]
