@@ -1,25 +1,23 @@
+# Use Node.js LTS version
 FROM node:20
 
-WORKDIR /usr/src/app
+# Set working directory
+WORKDIR /app
 
 # Copy package.json and package-lock.json
-COPY client/app/package*.json ./
+COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
-# Copy the rest of the client code
-COPY client/app .
+# Copy the rest of the application code
+COPY . .
 
-# Build the app if a build script exists, otherwise skip
-RUN if npm run build; then \
-      echo "Build successful"; \
-    else \
-      echo "No build script found, skipping build step"; \
-    fi
+# Build the Next.js app
+RUN npm run build
 
+# Expose the port the app runs on
 EXPOSE 3000
 
-
-# Use a more flexible start command
+# Start the application
 CMD ["npm", "start"]
