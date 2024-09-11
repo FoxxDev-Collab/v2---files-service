@@ -4,11 +4,23 @@ import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 
+const timezones = [
+  'America/Boise',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  // Add more timezones as needed
+];
+
 export default function Register() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [timezone, setTimezone] = useState('America/Boise');
   const [error, setError] = useState('');
   const router = useRouter();
   const { login } = useAuth();
@@ -23,7 +35,14 @@ export default function Register() {
     }
 
     try {
-      const response = await api.post('/auth/register', { username, email, password });
+      const response = await api.post('/auth/register', {
+        username,
+        email,
+        password,
+        firstName,
+        lastName,
+        timezone
+      });
       login(response.data.token);
       router.push('/dashboard');
     } catch (err: any) {
@@ -45,10 +64,8 @@ export default function Register() {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <input type="hidden" name="remember" value="true" />
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="username" className="sr-only">Username</label>
               <input
                 id="username"
                 name="username"
@@ -61,20 +78,55 @@ export default function Register() {
               />
             </div>
             <div>
-              <label htmlFor="email" className="sr-only">Email</label>
               <input
                 id="email"
                 name="email"
                 type="email"
-                required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email"
+                placeholder="Email (optional)"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">Password</label>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="First Name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            </div>
+            <div>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Last Name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </div>
+            <div>
+              <select
+                id="timezone"
+                name="timezone"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+              >
+                {timezones.map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <input
                 id="password"
                 name="password"
@@ -87,7 +139,6 @@ export default function Register() {
               />
             </div>
             <div>
-              <label htmlFor="confirm-password" className="sr-only">Confirm Password</label>
               <input
                 id="confirm-password"
                 name="confirm-password"

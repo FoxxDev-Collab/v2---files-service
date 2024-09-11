@@ -4,21 +4,41 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import { generateToken, authMiddleware } from '../auth';
 import pool from '../db';
+import multer from 'multer';
+import path from 'path';
 
 const router = express.Router();
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/')
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)) //Appending extension
+  }
+})
+
+const upload = multer({ storage: storage });
 
 router.post('/register', async (req, res) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, firstName, lastName, timezone } = req.body;
 
-  if (!username || !email || !password) {
-    return res.status(400).json({ message: 'Username, email, and password are required' });
+  if (!username || !password || !firstName || !lastName) {
+    return res.status(400).json({ message: 'Username, password, first name, and last name are required' });
   }
 
   try {
     // Check if user already exists
-    const userCheck = await pool.query('SELECT * FROM users WHERE username = $1 OR email = $2', [username, email]);
+    const userCheck = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
     if (userCheck.rows.length > 0) {
-      return res.status(400).json({ message: 'Username or email already exists' });
+      return res.status(400).json({ message: 'Username already exists' });
+    }
+
+    // Check if email exists if provided
+    if (email) {
+      const emailCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
     }
 
     // Hash password
@@ -34,8 +54,8 @@ router.post('/register', async (req, res) => {
 
     // Insert new user with the 'user' role
     const newUser = await pool.query(
-      'INSERT INTO users (username, email, password, role_id) VALUES ($1, $2, $3, $4) RETURNING id, username',
-      [username, email, hashedPassword, roleId]
+      'INSERT INTO users (username, email, password, first_name, last_name, timezone, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username',
+      [username, email || null, hashedPassword, firstName, lastName, timezone || 'America/Boise', roleId]
     );
 
     const token = generateToken({ id: newUser.rows[0].id, username: newUser.rows[0].username });
@@ -250,6 +270,64 @@ router.put('/change-password', authMiddleware, async (req, res) => {
     } catch (error) {
       console.error('Error updating user role:', error);
       res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+  
+    try {
+      const userId = (req as any).user.id;
+      const profilePictureUrl = `/uploads/${req.file.filename}`;
+      
+      await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+      
+      res.json({ profilePictureUrl });
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      res.status(500).json({ message: 'Server error during avatar upload' });
+    }
+  });
+  
+  // Update the existing /profile PUT route
+  router.put('/profile', authMiddleware, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const { firstName, lastName, email, timezone } = req.body;
+  
+      const result = await pool.query(
+        'UPDATE users SET first_name = $1, last_name = $2, email = $3, timezone = $4 WHERE id = $5 RETURNING id, username, email, first_name, last_name, timezone, profile_picture_url',
+        [firstName, lastName, email, timezone, userId]
+      );
+  
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+  
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error('Profile update error:', error);
+      res.status(500).json({ message: 'Server error during profile update' });
+    }
+  });
+
+  router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+  
+    try {
+      const userId = (req as any).user.id;
+      const profilePictureUrl = `/uploads/${req.file.filename}`;
+      
+      await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+      
+      res.json({ profilePictureUrl });
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      res.status(500).json({ message: 'Server error during avatar upload' });
     }
   });
 

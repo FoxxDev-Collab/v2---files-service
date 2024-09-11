@@ -6,6 +6,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth';
+import path from 'path';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,3 +24,5 @@ app.use('/auth', authRoutes);
 app.listen(PORT, () => {
   console.log(`Auth service running on port ${PORT}`);
 });
+
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

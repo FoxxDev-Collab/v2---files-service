@@ -21,3 +21,5 @@ EXPOSE 3001
 
 # Run the compiled JavaScript
 CMD ["node", "dist/server.js"]
+
+RUN mkdir -p /usr/src/app/uploads && chmod 775 /usr/src/app/uploads

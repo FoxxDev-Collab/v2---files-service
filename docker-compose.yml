@@ -36,6 +36,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+    - uploads_data:/usr/src/app/uploads
 
   client:
     build:
@@ -50,3 +52,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
