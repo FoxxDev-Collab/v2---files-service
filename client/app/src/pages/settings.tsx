@@ -28,7 +28,7 @@ const Settings: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedPictures, setUploadedPictures] = useState<string[]>([]);
   const router = useRouter();
-  const { user, logout, updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
 
   useEffect(() => {
     fetchProfile();
@@ -44,6 +44,7 @@ const Settings: React.FC = () => {
       setIsLoading(true);
       const response = await api.get<UserProfile>('/auth/profile');
       setProfile(response.data);
+      setUploadedPictures([response.data.profilePictureUrl]);
       setError('');
     } catch (err) {
       console.error('Failed to fetch profile', err);
@@ -60,16 +61,7 @@ const Settings: React.FC = () => {
     try {
       const response = await api.put<UserProfile>('/auth/profile', profile);
       setProfile(response.data);
-      updateUser({
-        id: response.data.id,
-        username: response.data.username,
-        email: response.data.email,
-        firstName: response.data.firstName,
-        lastName: response.data.lastName,
-        role: response.data.role,
-        profilePictureUrl: response.data.profilePictureUrl,
-        timezone: response.data.timezone
-      });
+      updateUser(response.data);
       setSuccessMessage('Profile updated successfully');
     } catch (err) {
       console.error('Failed to update profile', err);
@@ -111,7 +103,7 @@ const Settings: React.FC = () => {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
         const newProfilePictureUrl = response.data.profilePictureUrl;
-        setUploadedPictures(prev => [...prev, newProfilePictureUrl]);
+        setUploadedPictures(prev => [...prev, newProfilePictureUrl].slice(-3));
         setSelectedFile(null);
         setSuccessMessage('Avatar uploaded successfully');
       } catch (err) {
@@ -129,6 +121,7 @@ const Settings: React.FC = () => {
         ...user!,
         profilePictureUrl: pictureUrl
       });
+      setUploadedPictures(prev => [pictureUrl, ...prev.filter(url => url !== pictureUrl)].slice(0, 3));
       setSuccessMessage('Profile picture updated successfully');
     } catch (err) {
       console.error('Failed to set profile picture', err);
@@ -179,7 +172,30 @@ const Settings: React.FC = () => {
               {/* Profile Information Form */}
               <form onSubmit={handleProfileUpdate} className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
                 <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Profile Information</h2>
-                {/* Add input fields for username, email, firstName, lastName, and timezone */}
+                <div className="mb-4">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="username">
+                    Username
+                  </label>
+                  <input
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    id="username"
+                    type="text"
+                    value={profile.username}
+                    onChange={(e) => setProfile({ ...profile, username: e.target.value })}
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="email">
+                    Email
+                  </label>
+                  <input
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    id="email"
+                    type="email"
+                    value={profile.email}
+                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                  />
+                </div>
                 <div className="flex items-center justify-between">
                   <button
                     className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
@@ -193,7 +209,42 @@ const Settings: React.FC = () => {
               {/* Password Change Form */}
               <form onSubmit={handlePasswordChange} className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
                 <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Change Password</h2>
-                {/* Add input fields for currentPassword, newPassword, and confirmNewPassword */}
+                <div className="mb-4">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="currentPassword">
+                    Current Password
+                  </label>
+                  <input
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    id="currentPassword"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="newPassword">
+                    New Password
+                  </label>
+                  <input
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+                <div className="mb-6">
+                  <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="confirmNewPassword">
+                    Confirm New Password
+                  </label>
+                  <input
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    id="confirmNewPassword"
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  />
+                </div>
                 <div className="flex items-center justify-between">
                   <button
                     className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
@@ -219,10 +270,11 @@ const Settings: React.FC = () => {
                       className="rounded-full"
                     />
                   </div>
+                  {/* Other Pictures */}
                   <div className="w-2/3">
                     <h3 className="text-lg font-semibold mb-2">Other Pictures</h3>
                     <div className="flex flex-wrap">
-                      {uploadedPictures.map((pictureUrl, index) => (
+                      {uploadedPictures.filter(url => url !== profile.profilePictureUrl).map((pictureUrl, index) => (
                         <div key={index} className="relative m-2">
                           <Image
                             src={pictureUrl}
@@ -250,6 +302,7 @@ const Settings: React.FC = () => {
                     </div>
                   </div>
                 </div>
+                {/* Upload New Picture */}
                 <div className="mt-4">
                   <input
                     type="file"
@@ -287,7 +340,6 @@ const Settings: React.FC = () => {
         </main>
       </div>
     </ProtectedRoute>
-  );
+  )
 };
-
 export default Settings;

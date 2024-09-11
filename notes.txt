@@ -1,0 +1,8 @@
+-- Replace 'your_user' with the actual username from your .env file
+GRANT ALL PRIVILEGES ON SCHEMA newcloud_schema TO newcloud_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA newcloud_schema TO newcloud_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA newcloud_schema TO newcloud_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA newcloud_schema GRANT ALL ON TABLES TO newcloud_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA newcloud_schema GRANT ALL ON SEQUENCES TO newcloud_user;
+
+ALTER TABLE users OWNER TO newcloud_user;

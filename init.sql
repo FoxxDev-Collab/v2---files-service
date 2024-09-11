@@ -22,3 +22,8 @@ ON CONFLICT (name) DO NOTHING;
 -- Grant necessary permissions
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO newcloud_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO newcloud_user;
+GRANT ALL PRIVILEGES ON SCHEMA newcloud_schema TO newcloud_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA newcloud_schema TO newcloud_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA newcloud_schema TO newcloud_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA newcloud_schema GRANT ALL ON TABLES TO newcloud_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA newcloud_schema GRANT ALL ON SEQUENCES TO newcloud_user;
