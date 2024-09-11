@@ -28,5 +28,6 @@ const pool = new pg_1.Pool({
     database: process.env.DB_NAME,
     password: String(process.env.DB_PASSWORD),
     port: parseInt(process.env.DB_PORT || '5432'),
+    options: '-c search_path=newcloud_schema,public'
 });
 exports.default = pool;
