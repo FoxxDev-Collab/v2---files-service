@@ -37,7 +37,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-    - uploads_data:/usr/src/app/uploads
+      - ./services/auth/uploads:/usr/src/app/uploads
 
   client:
     build:

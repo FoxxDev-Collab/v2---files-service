@@ -25,4 +25,4 @@ app.listen(PORT, () => {
   console.log(`Auth service running on port ${PORT}`);
 });
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))

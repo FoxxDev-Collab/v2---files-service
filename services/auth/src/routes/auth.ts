@@ -6,18 +6,44 @@ import { generateToken, authMiddleware } from '../auth';
 import pool from '../db';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 
 const router = express.Router();
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/')
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname)) //Appending extension
+    cb(null, Date.now() + path.extname(file.originalname));
   }
-})
+});
 
 const upload = multer({ storage: storage });
+
+const uploadDir = path.join(__dirname, '..', 'uploads');
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+
+router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+
+  try {
+    const userId = (req as any).user.id;
+    const profilePictureUrl = `/uploads/${req.file.filename}`; // This should be a URL, not a file path
+    
+    await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+    
+    res.json({ profilePictureUrl });
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    res.status(500).json({ message: 'Server error during avatar upload' });
+  }
+});
 
 router.post('/register', async (req, res) => {
   const { username, email, password, firstName, lastName, timezone } = req.body;
@@ -88,6 +114,7 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 /* router.get('/profile', authMiddleware, async (req, res) => {
   try {
@@ -187,6 +214,24 @@ router.put('/change-password', authMiddleware, async (req, res) => {
     } catch (error) {
       console.error('Password change error:', error);
       res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+  
+    try {
+      const userId = (req as any).user.id;
+      const profilePictureUrl = `/uploads/${req.file.filename}`; // This should be a URL, not a file path
+      
+      await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+      
+      res.json({ profilePictureUrl });
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      res.status(500).json({ message: 'Server error during avatar upload' });
     }
   });
 

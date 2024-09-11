@@ -20,5 +20,6 @@ RUN if npm run build; then \
 
 EXPOSE 3000
 
+
 # Use a more flexible start command
 CMD ["npm", "start"]
