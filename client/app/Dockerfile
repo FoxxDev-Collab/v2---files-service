@@ -5,14 +5,14 @@ WORKDIR /usr/src/app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies
+# Install ALL dependencies, including devDependencies
 RUN npm install
 
 # Copy the rest of the client code
 COPY . .
 
-# Set NODE_ENV to production
-ENV NODE_ENV production
+# Run ESLint
+RUN npm run lint
 
 # Build the Next.js app
 RUN npm run build
