@@ -7,4 +7,4 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA newcloud_schema GRANT ALL ON SEQUENCES TO new
 
 ALTER TABLE users OWNER TO newcloud_user;
 
-ALTER USER newcloud_user WITH PASSWORD 'foxx@dev1dt431';
+ALTER USER newcloud_user WITH PASSWORD 'foxxdev1dt431';
