@@ -1,0 +1,17 @@
+Parsing error: Cannot find module 'next/babel'
+Require stack:
+- C:\Users\IEMS-InfoSystemSecM\Documents\Projects\Nextcloud Alt - 1\New-Cloud\v1\new-cloud\client\app\node_modules\@babel\core\lib\config\files\plugins.js
+- C:\Users\IEMS-InfoSystemSecM\Documents\Projects\Nextcloud Alt - 1\New-Cloud\v1\new-cloud\client\app\node_modules\@babel\core\lib\config\files\index.js
+- C:\Users\IEMS-InfoSystemSecM\Documents\Projects\Nextcloud Alt - 1\New-Cloud\v1\new-cloud\client\app\node_modules\@babel\core\lib\index.js
+- C:\Users\IEMS-InfoSystemSecM\Documents\Projects\Nextcloud Alt - 1\New-Cloud\v1\new-cloud\client\app\node_modules\@babel\eslint-parser\lib\worker\babel-core.cjs
+- C:\Users\IEMS-InfoSystemSecM\Documents\Projects\Nextcloud Alt - 1\New-Cloud\v1\new-cloud\client\app\node_modules\@babel\eslint-parser\lib\worker\handle-message.cjs
+- C:\Users\IEMS-InfoSystemSecM\Documents\Projects\Nextcloud Alt - 1\New-Cloud\v1\new-cloud\client\app\node_modules\@babel\eslint-parser\lib\client.cjs
+- C:\Users\IEMS-InfoSystemSecM\Documents\Projects\Nextcloud Alt - 1\New-Cloud\v1\new-cloud\client\app\node_modules\@babel\eslint-parser\lib\index.cjs
+- C:\Users\IEMS-InfoSystemSecM\Documents\Projects\Nextcloud Alt - 1\New-Cloud\v1\new-cloud\client\app\node_modules\@eslint\eslintrc\dist\eslintrc.cjs
+
+Make sure that all the Babel plugins and presets you are using
+are defined as dependencies or devDependencies in your package.json
+file. It's possible that the missing plugin is loaded by a preset
+you are using that forgot to add the plugin to its dependencies: you
+can workaround this problem by explicitly adding the missing package
+to your top-level package.json.eslint
