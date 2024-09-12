@@ -26,9 +26,9 @@ const Settings: React.FC = () => {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadedPictures, setUploadedPictures] = useState<string[]>([]);
-  const router = useRouter();
   const { user, updateUser } = useAuth();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetchProfile();
@@ -88,58 +88,6 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
-
-  const handleAvatarUpload = async () => {
-    if (selectedFile && profile) {
-      const formData = new FormData();
-      formData.append('avatar', selectedFile);
-      try {
-        const response = await api.post<{ profilePictureUrl: string }>('/auth/upload-avatar', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        const newProfilePictureUrl = response.data.profilePictureUrl;
-        setUploadedPictures(prev => [...prev, newProfilePictureUrl].slice(-3));
-        setSelectedFile(null);
-        setSuccessMessage('Avatar uploaded successfully');
-      } catch (err) {
-        console.error('Failed to upload avatar', err);
-        setError('Failed to upload avatar');
-      }
-    }
-  };
-
-  const handleSetProfilePicture = async (pictureUrl: string) => {
-    try {
-      await api.put('/auth/set-profile-picture', { profilePictureUrl: pictureUrl });
-      setProfile(prev => prev ? { ...prev, profilePictureUrl: pictureUrl } : null);
-      updateUser({
-        ...user!,
-        profilePictureUrl: pictureUrl
-      });
-      setUploadedPictures(prev => [pictureUrl, ...prev.filter(url => url !== pictureUrl)].slice(0, 3));
-      setSuccessMessage('Profile picture updated successfully');
-    } catch (err) {
-      console.error('Failed to set profile picture', err);
-      setError('Failed to set profile picture');
-    }
-  };
-
-  const handleDeletePicture = async (pictureUrl: string) => {
-    try {
-      await api.delete(`/auth/delete-picture`, { data: { pictureUrl } });
-      setUploadedPictures(prev => prev.filter(url => url !== pictureUrl));
-      setSuccessMessage('Picture deleted successfully');
-    } catch (err) {
-      console.error('Failed to delete picture', err);
-      setError('Failed to delete picture');
-    }
-  };
-
   const handleDarkModeToggle = () => {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
@@ -160,6 +108,44 @@ const Settings: React.FC = () => {
       </ProtectedRoute>
     );
   }
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append('avatar', selectedFile);
+
+    try {
+      const response = await api.post('/auth/upload-avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setPreviewUrl(response.data.profilePictureUrl);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!previewUrl) return;
+
+    try {
+      await api.put('/auth/save-profile-picture', { profilePictureUrl: previewUrl });
+      updateUser({ ...user!, profilePictureUrl: previewUrl });
+    } catch (error) {
+      console.error('Error saving profile picture:', error);
+    }
+  };
 
   return (
     <ProtectedRoute>
@@ -256,75 +242,44 @@ const Settings: React.FC = () => {
               </form>
 
               {/* Profile Picture Section */}
-              <div className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
-                <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Profile Picture</h2>
-                <div className="flex flex-wrap">
-                  {/* Current Profile Picture */}
-                  <div className="w-1/3 pr-4">
-                    <h3 className="text-lg font-semibold mb-2">Current Picture</h3>
-                    <Image
-                      src={user?.profilePictureUrl
-                        ? `${process.env.NEXT_PUBLIC_API_URL}${user.profilePictureUrl}`
-                        : '/default-avatar.png'  // Provide a path to a default avatar image
-                      }
-                      alt="Profile"
-                      width={200}
-                      height={200}
-                      className="rounded-full"
-                    />
-                  </div>
-                  {/* Other Pictures */}
-                  <div className="w-2/3">
-                    <h3 className="text-lg font-semibold mb-2">Other Pictures</h3>
-                    <div className="flex flex-wrap">
-                      {uploadedPictures.filter(url => url !== profile.profilePictureUrl).map((pictureUrl, index) => (
-                        <div key={index} className="relative m-2">
-                          <Image
-                            src={user?.profilePictureUrl
-                              ? `${process.env.NEXT_PUBLIC_API_URL}${user.profilePictureUrl}`
-                              : '/default-avatar.png'  // Provide a path to a default avatar image
-                            }
-                            alt={`Uploaded ${index + 1}`}
-                            width={100}
-                            height={100}
-                            className="rounded-md"
+               <div className="mb-6">
+                 <h2 className="text-xl font-semibold mb-2">Profile Picture</h2>
+                   <div className="flex items-center space-x-4">
+                     {previewUrl && (
+                        <Image
+                        src={previewUrl}
+                        alt="Profile preview"
+                        width={100}
+                        height={100}
+                        className="rounded-full"
+                         />
+                        )}
+                        <div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileSelect}
+                            className="mb-2"
                           />
-                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                          <div className="space-x-2">
                             <button
-                              onClick={() => handleSetProfilePicture(pictureUrl)}
-                              className="bg-blue-500 text-white px-2 py-1 rounded text-sm mr-2"
+                              onClick={handleUpload}
+                              className="bg-blue-500 text-white px-4 py-2 rounded"
+                              disabled={!selectedFile}
                             >
-                              Set as Profile
+                              Upload
                             </button>
                             <button
-                              onClick={() => handleDeletePicture(pictureUrl)}
-                              className="bg-red-500 text-white px-2 py-1 rounded text-sm"
+                              onClick={handleSave}
+                              className="bg-green-500 text-white px-4 py-2 rounded"
+                              disabled={!previewUrl}
                             >
-                              Delete
+                              Save
                             </button>
                           </div>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
-                </div>
-                {/* Upload New Picture */}
-                <div className="mt-4">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    className="mb-2"
-                  />
-                  <button
-                    onClick={handleAvatarUpload}
-                    disabled={!selectedFile}
-                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
-                  >
-                    Upload New Picture
-                  </button>
-                </div>
-              </div>
 
               {/* Dark Mode Toggle */}
               <div className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
@@ -349,3 +304,7 @@ const Settings: React.FC = () => {
   )
 };
 export default Settings;
+function setUploadedPictures(arg0: string[]) {
+  throw new Error('Function not implemented.');
+}
+

@@ -53,6 +53,18 @@ router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (r
         res.status(500).json({ message: 'Server error during avatar upload' });
     }
 }));
+router.put('/save-profile-picture', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.user.id;
+        const { profilePictureUrl } = req.body;
+        yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+        res.json({ message: 'Profile picture updated successfully' });
+    }
+    catch (error) {
+        console.error('Error saving profile picture:', error);
+        res.status(500).json({ message: 'Server error during profile picture update' });
+    }
+}));
 router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, email, password, firstName, lastName, timezone } = req.body;
     if (!username || !password || !firstName || !lastName) {

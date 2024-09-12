@@ -33,21 +33,21 @@ const Header: React.FC = () => {
                   Manage Users
                 </Link>
               )}
+              <div className="relative group">
+              <Image
+                  src={user.profilePictureUrl || '/default-avatar.png'}
+                  alt="Profile"
+                  width={50}
+                  height={50}
+                  className="rounded-full"
+                />
+              </div>
               <button
                 onClick={handleLogout}
                 className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
               >
                 Logout
               </button>
-              <div className="relative group">
-                <Image
-                  src={user.profilePictureUrl || '/default-avatar.png'}
-                  alt="Profile"
-                  width={40}
-                  height={40}
-                  className="rounded-full cursor-pointer"
-                />
-              </div>
             </div>
           )}
         </div>

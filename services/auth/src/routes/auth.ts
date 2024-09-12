@@ -51,6 +51,23 @@ router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (re
   }
 });
 
+router.put('/save-profile-picture', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+    const { profilePictureUrl } = req.body;
+
+    await pool.query(
+      'UPDATE users SET profile_picture_url = $1 WHERE id = $2',
+      [profilePictureUrl, userId]
+    );
+
+    res.json({ message: 'Profile picture updated successfully' });
+  } catch (error) {
+    console.error('Error saving profile picture:', error);
+    res.status(500).json({ message: 'Server error during profile picture update' });
+  }
+});
+
 router.post('/register', async (req, res) => {
   const { username, email, password, firstName, lastName, timezone } = req.body;
 
