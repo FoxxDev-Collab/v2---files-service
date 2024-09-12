@@ -9,6 +9,7 @@ import path from 'path';
 import fs from 'fs';
 
 const router = express.Router();
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, '..', 'uploads'));
@@ -22,6 +23,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 const uploadDir = path.join(__dirname, '..', 'uploads');
+console.log('Upload directory:', uploadDir);
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -37,12 +39,11 @@ router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (re
     const userId = (req as any).user.id;
     const profilePictureUrl = `/uploads/${req.file.filename}`;
     
-    // Log the file details for debugging
+    await pool.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+    
     console.log('File uploaded:', req.file);
     console.log('Profile picture URL:', profilePictureUrl);
-    // Update the user's profile picture URL in the database
-    await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-    
+
     res.json({ profilePictureUrl });
   } catch (error) {
     console.error('Avatar upload error:', error);

@@ -10,6 +10,8 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+
+
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -32,6 +34,12 @@ const pool = new Pool({
   port: parseInt(process.env.DB_PORT || '5432'),
   options: '-c search_path=newcloud_schema,public'
 });
+
+const uploadDir = path.join(__dirname, '..', 'uploads');
+app.use('/uploads', express.static(uploadDir));
+
+// Use auth routes
+app.use('/auth', authRoutes);
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);

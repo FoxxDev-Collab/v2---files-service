@@ -32,6 +32,8 @@ const storage = multer_1.default.diskStorage({
 });
 const upload = (0, multer_1.default)({ storage: storage });
 const uploadDir = path_1.default.join(__dirname, '..', 'uploads');
+console.log('Upload directory:', uploadDir);
+app.use('/uploads', express_1.default.static(uploadDir));
 if (!fs_1.default.existsSync(uploadDir)) {
     fs_1.default.mkdirSync(uploadDir, { recursive: true });
 }
@@ -42,11 +44,9 @@ router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (r
     try {
         const userId = req.user.id;
         const profilePictureUrl = `/uploads/${req.file.filename}`;
-        // Log the file details for debugging
+        yield server_1.default.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
         console.log('File uploaded:', req.file);
         console.log('Profile picture URL:', profilePictureUrl);
-        // Update the user's profile picture URL in the database
-        yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
         res.json({ profilePictureUrl });
     }
     catch (error) {

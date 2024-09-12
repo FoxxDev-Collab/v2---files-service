@@ -263,7 +263,10 @@ const Settings: React.FC = () => {
                   <div className="w-1/3 pr-4">
                     <h3 className="text-lg font-semibold mb-2">Current Picture</h3>
                     <Image
-                      src={profile.profilePictureUrl || '/default-avatar.png'}
+                      src={user?.profilePictureUrl
+                        ? `${process.env.NEXT_PUBLIC_API_URL}${user.profilePictureUrl}`
+                        : '/default-avatar.png'  // Provide a path to a default avatar image
+                      }
                       alt="Profile"
                       width={200}
                       height={200}
@@ -277,7 +280,10 @@ const Settings: React.FC = () => {
                       {uploadedPictures.filter(url => url !== profile.profilePictureUrl).map((pictureUrl, index) => (
                         <div key={index} className="relative m-2">
                           <Image
-                            src={pictureUrl}
+                            src={user?.profilePictureUrl
+                              ? `${process.env.NEXT_PUBLIC_API_URL}${user.profilePictureUrl}`
+                              : '/default-avatar.png'  // Provide a path to a default avatar image
+                            }
                             alt={`Uploaded ${index + 1}`}
                             width={100}
                             height={100}

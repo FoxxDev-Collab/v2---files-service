@@ -30,6 +30,10 @@ const pool = new pg_1.Pool({
     port: parseInt(process.env.DB_PORT || '5432'),
     options: '-c search_path=newcloud_schema,public'
 });
+const uploadDir = path_1.default.join(__dirname, '..', 'uploads');
+app.use('/uploads', express_1.default.static(uploadDir));
+// Use auth routes
+app.use('/auth', auth_1.default);
 pool.on('error', (err) => {
     console.error('Unexpected error on idle client', err);
 });

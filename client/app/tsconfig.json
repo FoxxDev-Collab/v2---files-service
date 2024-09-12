@@ -17,7 +17,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["node", "jest", "@babel/core", "@babel/generator", "@babel/template", "@babel/traverse", "json-schema"]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
