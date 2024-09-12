@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: newcloud
       POSTGRES_USER: newcloud_user
-      POSTGRES_PASSWORD: NOTthisday@@22
+      POSTGRES_PASSWORD: foxxdev1dt431
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
