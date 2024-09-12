@@ -21,21 +21,71 @@ const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const router = express_1.default.Router();
+// File upload configuration
+const uploadDir = path_1.default.join(__dirname, '..', 'uploads');
 const storage = multer_1.default.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, path_1.default.join(__dirname, '..', 'uploads'));
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path_1.default.extname(file.originalname));
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+        cb(null, `${file.fieldname}-${uniqueSuffix}${path_1.default.extname(file.originalname)}`);
     }
 });
-const upload = (0, multer_1.default)({ storage: storage });
-const uploadDir = path_1.default.join(__dirname, '..', 'uploads');
-console.log('Upload directory:', uploadDir);
+const upload = (0, multer_1.default)({ storage });
+// Ensure upload directory exists
 if (!fs_1.default.existsSync(uploadDir)) {
     fs_1.default.mkdirSync(uploadDir, { recursive: true });
 }
+// Helper function for server error responses
+const serverErrorResponse = (res, error) => {
+    console.error('Server error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+};
+// User registration
+router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { username, email, password, firstName, lastName, timezone } = req.body;
+    if (!username || !password || !firstName || !lastName) {
+        return res.status(400).json({ message: 'Username, password, first name, and last name are required' });
+    }
+    try {
+        // Check if user already exists
+        const userExists = yield server_1.default.query('SELECT * FROM newcloud_schema.users WHERE username = $1 OR email = $2', [username, email]);
+        if (userExists.rows.length > 0) {
+            return res.status(400).json({ message: 'Username or email already in use' });
+        }
+        // Hash password
+        const salt = yield bcrypt_1.default.genSalt(10);
+        const hashedPassword = yield bcrypt_1.default.hash(password, salt);
+        // Get the 'user' role id
+        const roleResult = yield server_1.default.query('SELECT id FROM newcloud_schema.roles WHERE name = $1', ['user']);
+        if (roleResult.rows.length === 0) {
+            return res.status(500).json({ message: 'Default role not found' });
+        }
+        const roleId = roleResult.rows[0].id;
+        // Insert new user
+        const newUser = yield server_1.default.query('INSERT INTO newcloud_schema.users (username, email, password, first_name, last_name, timezone, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username', [username, email, hashedPassword, firstName, lastName, timezone || 'America/Boise', roleId]);
+        const token = (0, auth_1.generateToken)({ id: newUser.rows[0].id, username: newUser.rows[0].username });
+        res.status(201).json({ token });
+    }
+    catch (error) {
+        serverErrorResponse(res, error);
+    }
+}));
+// User login
+router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { username, password } = req.body;
+    try {
+        const user = yield server_1.default.query('SELECT * FROM newcloud_schema.users WHERE username = $1', [username]);
+        if (user.rows.length === 0 || !(yield bcrypt_1.default.compare(password, user.rows[0].password))) {
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
+        const token = (0, auth_1.generateToken)({ id: user.rows[0].id, username: user.rows[0].username });
+        res.json({ token });
+    }
+    catch (error) {
+        serverErrorResponse(res, error);
+    }
+}));
+// Get user profile
 router.get('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;
@@ -43,221 +93,95 @@ router.get('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, vo
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
-        const user = result.rows[0];
-        res.json({
-            id: user.id,
-            username: user.username,
-            email: user.email,
-            firstName: user.first_name,
-            lastName: user.last_name,
-            timezone: user.timezone,
-            role: user.role
-        });
+        res.json(result.rows[0]);
     }
     catch (error) {
-        console.error('Profile fetch error:', error);
-        res.status(500).json({ message: 'Server error' });
+        serverErrorResponse(res, error);
     }
 }));
+// Update user profile
 router.put('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;
-        const { username, firstName, lastName, timezone, newPassword } = req.body;
-        let query = 'UPDATE users SET username = $1, first_name = $2, last_name = $3, timezone = $4';
-        let values = [username, firstName, lastName, timezone];
-        if (newPassword) {
-            const salt = yield bcrypt_1.default.genSalt(10);
-            const hashedPassword = yield bcrypt_1.default.hash(newPassword, salt);
-            query += ', password = $5';
-            values.push(hashedPassword);
-        }
-        query += ' WHERE id = $' + (values.length + 1) + ' RETURNING id, username, email, first_name, last_name, timezone';
-        values.push(userId);
-        const result = yield server_1.default.query(query, values);
+        const { firstName, lastName, email, timezone } = req.body;
+        const result = yield server_1.default.query('UPDATE users SET first_name = $1, last_name = $2, email = $3, timezone = $4 WHERE id = $5 RETURNING id, username, email, first_name, last_name, timezone, profile_picture_url', [firstName, lastName, email, timezone, userId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
-        const updatedUser = result.rows[0];
-        res.json({
-            id: updatedUser.id,
-            username: updatedUser.username,
-            email: updatedUser.email,
-            firstName: updatedUser.first_name,
-            lastName: updatedUser.last_name,
-            timezone: updatedUser.timezone
-        });
+        res.json(result.rows[0]);
     }
     catch (error) {
-        console.error('Profile update error:', error);
-        res.status(500).json({ message: 'Server error during profile update' });
+        serverErrorResponse(res, error);
     }
 }));
-router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, email, password, firstName, lastName, timezone } = req.body;
-    if (!username || !password || !firstName || !lastName) {
-        return res.status(400).json({ message: 'Username, password, first name, and last name are required' });
-    }
-    try {
-        console.log('Received registration request:', { username, email, firstName, lastName, timezone, passwordLength: password ? password.length : 0 });
-        // Check if user already exists
-        const userCheck = yield server_1.default.query('SELECT * FROM newcloud_schema.users WHERE username = $1', [username]);
-        if (userCheck.rows.length > 0) {
-            return res.status(400).json({ message: 'Username already exists' });
-        }
-        // Check if email exists if provided
-        if (email) {
-            const emailCheck = yield server_1.default.query('SELECT * FROM newcloud_schema.users WHERE email = $1', [email]);
-            if (emailCheck.rows.length > 0) {
-                return res.status(400).json({ message: 'Email already in use' });
-            }
-        }
-        // Hash password
-        const salt = yield bcrypt_1.default.genSalt(10);
-        const hashedPassword = yield bcrypt_1.default.hash(String(password), salt);
-        // Get the 'user' role id
-        const roleResult = yield server_1.default.query('SELECT id FROM newcloud_schema.roles WHERE name = $1', ['user']);
-        if (roleResult.rows.length === 0) {
-            return res.status(500).json({ message: 'Default role not found' });
-        }
-        const roleId = roleResult.rows[0].id;
-        // Insert new user with the 'user' role
-        const newUser = yield server_1.default.query('INSERT INTO newcloud_schema.users (username, email, password, first_name, last_name, timezone, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username', [username, email || null, hashedPassword, firstName, lastName, timezone || 'America/Boise', roleId]);
-        const token = (0, auth_1.generateToken)({ id: newUser.rows[0].id, username: newUser.rows[0].username });
-        res.status(201).json({ token });
-    }
-    catch (error) {
-        console.error('Registration error:', error);
-        if (error instanceof Error) {
-            res.status(500).json({ message: 'Server error during registration', error: error.message });
-        }
-        else {
-            res.status(500).json({ message: 'Server error during registration' });
-        }
-    }
-}));
-router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password } = req.body;
-    try {
-        const user = yield server_1.default.query('SELECT * FROM newcloud_schema.users WHERE username = $1', [username]);
-        if (user.rows.length === 0) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-        const validPassword = yield bcrypt_1.default.compare(password, user.rows[0].password);
-        if (!validPassword) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-        const token = (0, auth_1.generateToken)({ id: user.rows[0].id, username: user.rows[0].username });
-        res.json({ token });
-    }
-    catch (error) {
-        console.error('Login error:', error);
-        if (error instanceof Error) {
-            res.status(500).json({ message: 'Server error during login', error: error.message });
-        }
-        else {
-            res.status(500).json({ message: 'Server error during login' });
-        }
-    }
-}));
+// Change password
 router.put('/change-password', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;
         const { currentPassword, newPassword } = req.body;
-        // Fetch the user from the database
-        const userResult = yield server_1.default.query('SELECT * FROM users WHERE id = $1', [userId]);
-        if (userResult.rows.length === 0) {
+        const user = yield server_1.default.query('SELECT * FROM users WHERE id = $1', [userId]);
+        if (user.rows.length === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
-        const user = userResult.rows[0];
-        // Verify current password
-        const isValidPassword = yield bcrypt_1.default.compare(currentPassword, user.password);
-        if (!isValidPassword) {
+        if (!(yield bcrypt_1.default.compare(currentPassword, user.rows[0].password))) {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
-        // Hash the new password
         const salt = yield bcrypt_1.default.genSalt(10);
         const hashedNewPassword = yield bcrypt_1.default.hash(newPassword, salt);
-        // Update the password in the database
         yield server_1.default.query('UPDATE users SET password = $1 WHERE id = $2', [hashedNewPassword, userId]);
         res.json({ message: 'Password updated successfully' });
     }
     catch (error) {
-        console.error('Password change error:', error);
-        res.status(500).json({ message: 'Server error' });
+        serverErrorResponse(res, error);
     }
 }));
+// Upload avatar
 router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
     }
     try {
         const userId = req.user.id;
-        const profilePictureUrl = `/uploads/${req.file.filename}`; // This should be a URL, not a file path
+        const profilePictureUrl = `/uploads/${req.file.filename}`;
         yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
         res.json({ profilePictureUrl });
     }
     catch (error) {
-        console.error('Avatar upload error:', error);
-        res.status(500).json({ message: 'Server error during avatar upload' });
+        serverErrorResponse(res, error);
     }
 }));
-const isSiteAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const userId = req.user.id;
-    const result = yield server_1.default.query('SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
-    if (((_a = result.rows[0]) === null || _a === void 0 ? void 0 : _a.name) === 'site_admin') {
-        next();
-    }
-    else {
-        res.status(403).json({ message: 'Access denied' });
-    }
-});
-// Middleware to check if user is an application admin or site admin
+// Admin middleware
 const isAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const userId = req.user.id;
-    const result = yield server_1.default.query('SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
-    if (['site_admin', 'application_admin'].includes((_a = result.rows[0]) === null || _a === void 0 ? void 0 : _a.name)) {
-        next();
+    try {
+        const userId = req.user.id;
+        const result = yield server_1.default.query('SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
+        if (['site_admin', 'application_admin'].includes((_a = result.rows[0]) === null || _a === void 0 ? void 0 : _a.name)) {
+            next();
+        }
+        else {
+            res.status(403).json({ message: 'Access denied' });
+        }
     }
-    else {
-        res.status(403).json({ message: 'Access denied' });
+    catch (error) {
+        serverErrorResponse(res, error);
     }
 });
-// Route to get all users (admin only)
+// Get all users (admin only)
 router.get('/users', auth_1.authMiddleware, isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const result = yield server_1.default.query('SELECT u.id, u.username, u.email, r.name as role FROM users u JOIN roles r ON u.role_id = r.id');
         res.json(result.rows);
     }
     catch (error) {
-        console.error('Error fetching users:', error);
-        res.status(500).json({ message: 'Server error' });
+        serverErrorResponse(res, error);
     }
 }));
-// Route to update user role (site admin only)
-router.put('/users/:id/role', auth_1.authMiddleware, isSiteAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+// Update user role (admin only)
+router.put('/users/:id/role', auth_1.authMiddleware, isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const { role } = req.body;
     try {
-        const roleResult = yield server_1.default.query('SELECT id FROM roles WHERE name = $1', [role]);
-        if (roleResult.rows.length === 0) {
-            return res.status(400).json({ message: 'Invalid role' });
-        }
-        const roleId = roleResult.rows[0].id;
-        yield server_1.default.query('UPDATE users SET role_id = $1 WHERE id = $2', [roleId, id]);
-        res.json({ message: 'User role updated successfully' });
-    }
-    catch (error) {
-        console.error('Error updating user role:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-}));
-router.put('/users/:id/role', auth_1.authMiddleware, isSiteAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    const { role } = req.body;
-    try {
-        // Check if the role is valid
         const validRoles = ['user', 'application_admin', 'site_admin'];
         if (!validRoles.includes(role)) {
             return res.status(400).json({ message: 'Invalid role' });
@@ -271,44 +195,7 @@ router.put('/users/:id/role', auth_1.authMiddleware, isSiteAdmin, (req, res) => 
         res.json({ message: 'User role updated successfully' });
     }
     catch (error) {
-        console.error('Error updating user role:', error);
-        res.status(500).json({ message: 'Server error' });
+        serverErrorResponse(res, error);
     }
 }));
 exports.default = router;
-/*
-router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'No file uploaded' });
-  }
-
-  try {
-    const userId = (req as any).user.id;
-    const profilePictureUrl = `/uploads/${req.file.filename}`;
-    
-    await pool.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-    
-    console.log('File uploaded:', req.file);
-    console.log('Profile picture URL:', profilePictureUrl);
-
-    res.json({ profilePictureUrl });
-  } catch (error) {
-    console.error('Avatar upload error:', error);
-    res.status(500).json({ message: 'Server error during avatar upload' });
-  }
-});
-
-router.put('/save-profile-picture', authMiddleware, async (req, res) => {
-  try {
-    const userId = (req as any).user.id;
-    const { profilePictureUrl } = req.body;
-
-    await pool.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-
-    res.json({ message: 'Profile picture updated successfully' });
-  } catch (error) {
-    console.error('Error saving profile picture:', error);
-    res.status(500).json({ message: 'Server error during profile picture update' });
-  }
-});
-*/ 

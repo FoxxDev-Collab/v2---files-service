@@ -1,10 +1,8 @@
-// client/app/src/contexts/AuthContext.tsx
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { setToken, getToken, removeToken } from '../utils/auth';
 import api from '../utils/api';
 
-interface User {
+export interface User {
   id: string;
   username: string;
   email: string;
@@ -20,7 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (token: string) => Promise<void>;
   logout: () => void;
-  updateUser: (user: User) => void;
+  updateUser: (user: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,8 +54,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  const updateUser = (updatedUser: User) => {
-    setUser(updatedUser);
+  const updateUser = (updatedUser: Partial<User>) => {
+    setUser(prevUser => prevUser ? { ...prevUser, ...updatedUser } : null);
   };
 
   return (
