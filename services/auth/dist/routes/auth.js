@@ -33,7 +33,6 @@ const storage = multer_1.default.diskStorage({
 const upload = (0, multer_1.default)({ storage: storage });
 const uploadDir = path_1.default.join(__dirname, '..', 'uploads');
 console.log('Upload directory:', uploadDir);
-app.use('/uploads', express_1.default.static(uploadDir));
 if (!fs_1.default.existsSync(uploadDir)) {
     fs_1.default.mkdirSync(uploadDir, { recursive: true });
 }
@@ -214,10 +213,10 @@ const isSiteAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
 });
 // Middleware to check if user is an application admin or site admin
 const isAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _b;
+    var _a;
     const userId = req.user.id;
     const result = yield server_1.default.query('SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
-    if (['site_admin', 'application_admin'].includes((_b = result.rows[0]) === null || _b === void 0 ? void 0 : _b.name)) {
+    if (['site_admin', 'application_admin'].includes((_a = result.rows[0]) === null || _a === void 0 ? void 0 : _a.name)) {
         next();
     }
     else {

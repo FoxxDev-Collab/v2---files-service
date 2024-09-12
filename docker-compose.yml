@@ -16,11 +16,25 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  gateway:
+    build: 
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - 4000:4000
+    environment:
+      - AUTH_SERVICE_URL=http://auth:3001
+      - CLIENT_APP_URL=http://client:3000
+    depends_on:
+      - auth
+      - client
 
   auth:
     build: 
       context: .
       dockerfile: services/auth/Dockerfile
+    expose:
+      - 3001  
     ports:
       - 3001:3001
     environment:
@@ -42,6 +56,8 @@ services:
     build:
       context: ./client/app
       dockerfile: Dockerfile
+    expose:
+      - 3000  
     ports:
       - 3000:3000
     environment:

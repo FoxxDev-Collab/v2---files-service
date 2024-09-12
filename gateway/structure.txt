@@ -1,0 +1,22 @@
+gateway/
+├── src/
+│   ├── index.ts              # Entry point
+│   ├── routes/               # Route definitions
+│   │   ├── auth.ts
+│   │   ├── files.ts
+│   │   ├── talk.ts
+│   │   ├── groupware.ts
+│   │   └── office.ts
+│   ├── middleware/           # Custom middleware
+│   │   ├── authentication.ts
+│   │   ├── rateLimit.ts
+│   │   └── errorHandler.ts
+│   ├── services/             # Service integrations
+│   │   ├── authService.ts
+│   │   ├── filesService.ts
+│   │   └── ...
+│   └── config/               # Configuration files
+│       ├── routes.ts         # Route configurations
+│       └── services.ts       # Service endpoint configurations
+├── package.json
+└── tsconfig.json
