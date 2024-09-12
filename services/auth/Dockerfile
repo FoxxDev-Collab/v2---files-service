@@ -12,7 +12,7 @@ RUN npm install
 COPY services/auth .
 
 # Typescript is a devDependency, so we need to install it for the build
-RUN npm install typescript
+RUN npm install typescript@latest
 
 # Build the app
 RUN npm run build

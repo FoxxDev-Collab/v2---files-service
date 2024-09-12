@@ -86,10 +86,10 @@ router.post('/register', async (req, res) => {
     const roleId = roleResult.rows[0].id;
 
     // Insert new user with the 'user' role
-    const newUser = await pool.query(
-      'INSERT INTO newcloud_schema.users (username, email, password, first_name, last_name, timezone, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username',
-      [username, email || null, hashedPassword, firstName, lastName, timezone || 'America/Boise', roleId]
-    );
+const newUser = await pool.query(
+  'INSERT INTO newcloud_schema.users (username, email, password, first_name, last_name, timezone, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username',
+  [username, email || null, hashedPassword, firstName, lastName, timezone || 'America/Boise', roleId]
+);
 
     const token = generateToken({ id: newUser.rows[0].id, username: newUser.rows[0].username });
     res.status(201).json({ token });

@@ -9,7 +9,7 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const path_1 = __importDefault(require("path"));
 const pg_1 = require("pg");
 const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../../.env') });
+dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../../../.env') });
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
 app.use((0, cors_1.default)({
@@ -26,7 +26,7 @@ const pool = new pg_1.Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
     database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
+    password: process.env.DB_PASSWORD ? String(process.env.DB_PASSWORD) : undefined,
     port: parseInt(process.env.DB_PORT || '5432'),
     options: '-c search_path=newcloud_schema,public'
 });
