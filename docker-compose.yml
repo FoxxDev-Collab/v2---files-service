@@ -20,7 +20,7 @@ services:
   auth:
     build: 
       context: .
-      dockerfile: services/auth/src/Dockerfile
+      dockerfile: services/auth/Dockerfile
     ports:
       - 3001:3001
     environment:
