@@ -28,7 +28,7 @@ services:
       - DB_USER=newcloud_user
       - DB_HOST=postgres
       - DB_NAME=newcloud
-      - DB_PASSWORD=NOTthisday@@22
+      - DB_PASSWORD=foxxdev1dt431
       - DB_PORT=5432
       - JWT_SECRET=test@69lol
       - FRONTEND_URL=http://localhost:3000
@@ -43,7 +43,7 @@ services:
       context: ./client/app
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - 3000:3000
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://localhost:3001
