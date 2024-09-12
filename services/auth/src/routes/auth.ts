@@ -29,42 +29,70 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-
-router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'No file uploaded' });
-  }
-
+router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).user.id;
-    const profilePictureUrl = `/uploads/${req.file.filename}`;
+    const result = await pool.query(
+      'SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.timezone, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1',
+      [userId]
+    );
     
-    await pool.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-    
-    console.log('File uploaded:', req.file);
-    console.log('Profile picture URL:', profilePictureUrl);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-    res.json({ profilePictureUrl });
+    const user = result.rows[0];
+    res.json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      timezone: user.timezone,
+      role: user.role
+    });
   } catch (error) {
-    console.error('Avatar upload error:', error);
-    res.status(500).json({ message: 'Server error during avatar upload' });
+    console.error('Profile fetch error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-router.put('/save-profile-picture', authMiddleware, async (req, res) => {
+router.put('/profile', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).user.id;
-    const { profilePictureUrl } = req.body;
+    const { username, firstName, lastName, timezone, newPassword } = req.body;
 
-    await pool.query(
-      'UPDATE users SET profile_picture_url = $1 WHERE id = $2',
-      [profilePictureUrl, userId]
-    );
+    let query = 'UPDATE users SET username = $1, first_name = $2, last_name = $3, timezone = $4';
+    let values = [username, firstName, lastName, timezone];
 
-    res.json({ message: 'Profile picture updated successfully' });
+    if (newPassword) {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+      query += ', password = $5';
+      values.push(hashedPassword);
+    }
+
+    query += ' WHERE id = $' + (values.length + 1) + ' RETURNING id, username, email, first_name, last_name, timezone';
+    values.push(userId);
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const updatedUser = result.rows[0];
+    res.json({
+      id: updatedUser.id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+      firstName: updatedUser.first_name,
+      lastName: updatedUser.last_name,
+      timezone: updatedUser.timezone
+    });
   } catch (error) {
-    console.error('Error saving profile picture:', error);
-    res.status(500).json({ message: 'Server error during profile picture update' });
+    console.error('Profile update error:', error);
+    res.status(500).json({ message: 'Server error during profile update' });
   }
 });
 
@@ -147,57 +175,6 @@ const newUser = await pool.query(
         }
       }
   });
-
-router.get('/profile', authMiddleware, async (req, res) => {
-    try {
-      const userId = (req as any).user.id;
-      const result = await pool.query(
-        'SELECT u.id, u.username, u.email, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1',
-        [userId]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      console.log('Profile data:', result.rows[0]); // Add this line
-  
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error('Profile fetch error:', error);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
-
-router.put('/profile', authMiddleware, async (req, res) => {
-  try {
-    const userId = (req as any).user.id;
-    const { username, email } = req.body;
-
-    // Check if username already exists
-    if (username) {
-      const usernameCheck = await pool.query('SELECT id FROM users WHERE username = $1 AND id != $2', [username, userId]);
-      if (usernameCheck.rows.length > 0) {
-        return res.status(400).json({ message: 'Username already taken' });
-      }
-    }
-
-    // Update user profile
-    const result = await pool.query(
-      'UPDATE users SET username = COALESCE($1, username), email = COALESCE($2, email) WHERE id = $3 RETURNING id, username, email',
-      [username, email, userId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Profile update error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
 
 router.put('/change-password', authMiddleware, async (req, res) => {
     try {
@@ -333,62 +310,41 @@ router.put('/change-password', authMiddleware, async (req, res) => {
     }
   });
 
-  router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
-  
-    try {
-      const userId = (req as any).user.id;
-      const profilePictureUrl = `/uploads/${req.file.filename}`;
-      
-      await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-      
-      res.json({ profilePictureUrl });
-    } catch (error) {
-      console.error('Avatar upload error:', error);
-      res.status(500).json({ message: 'Server error during avatar upload' });
-    }
-  });
-  
-  // Update the existing /profile PUT route
-  router.put('/profile', authMiddleware, async (req, res) => {
-    try {
-      const userId = (req as any).user.id;
-      const { firstName, lastName, email, timezone } = req.body;
-  
-      const result = await pool.query(
-        'UPDATE users SET first_name = $1, last_name = $2, email = $3, timezone = $4 WHERE id = $5 RETURNING id, username, email, first_name, last_name, timezone, profile_picture_url',
-        [firstName, lastName, email, timezone, userId]
-      );
-  
-      if (result.rows.length === 0) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error('Profile update error:', error);
-      res.status(500).json({ message: 'Server error during profile update' });
-    }
-  });
-
-  router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
-  
-    try {
-      const userId = (req as any).user.id;
-      const profilePictureUrl = `/uploads/${req.file.filename}`;
-      
-      await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-      
-      res.json({ profilePictureUrl });
-    } catch (error) {
-      console.error('Avatar upload error:', error);
-      res.status(500).json({ message: 'Server error during avatar upload' });
-    }
-  });
-
 export default router;
+
+/*
+router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+
+  try {
+    const userId = (req as any).user.id;
+    const profilePictureUrl = `/uploads/${req.file.filename}`;
+    
+    await pool.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+    
+    console.log('File uploaded:', req.file);
+    console.log('Profile picture URL:', profilePictureUrl);
+
+    res.json({ profilePictureUrl });
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    res.status(500).json({ message: 'Server error during avatar upload' });
+  }
+});
+
+router.put('/save-profile-picture', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+    const { profilePictureUrl } = req.body;
+
+    await pool.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+
+    res.json({ message: 'Profile picture updated successfully' });
+  } catch (error) {
+    console.error('Error saving profile picture:', error);
+    res.status(500).json({ message: 'Server error during profile picture update' });
+  }
+});
+*/

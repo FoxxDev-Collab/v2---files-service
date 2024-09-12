@@ -1,8 +1,9 @@
+// client/app/src/contexts/AuthContext.tsx
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { setToken, getToken, removeToken } from '../utils/auth';
 import api from '../utils/api';
 
-// Define the User type here instead of importing it
 interface User {
   id: string;
   username: string;
@@ -58,8 +59,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
   };
-
-  console.log('Current user:', user);
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, updateUser }}>

@@ -36,33 +36,60 @@ console.log('Upload directory:', uploadDir);
 if (!fs_1.default.existsSync(uploadDir)) {
     fs_1.default.mkdirSync(uploadDir, { recursive: true });
 }
-router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded' });
-    }
+router.get('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;
-        const profilePictureUrl = `/uploads/${req.file.filename}`;
-        yield server_1.default.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-        console.log('File uploaded:', req.file);
-        console.log('Profile picture URL:', profilePictureUrl);
-        res.json({ profilePictureUrl });
+        const result = yield server_1.default.query('SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.timezone, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const user = result.rows[0];
+        res.json({
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            timezone: user.timezone,
+            role: user.role
+        });
     }
     catch (error) {
-        console.error('Avatar upload error:', error);
-        res.status(500).json({ message: 'Server error during avatar upload' });
+        console.error('Profile fetch error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 }));
-router.put('/save-profile-picture', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.put('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;
-        const { profilePictureUrl } = req.body;
-        yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-        res.json({ message: 'Profile picture updated successfully' });
+        const { username, firstName, lastName, timezone, newPassword } = req.body;
+        let query = 'UPDATE users SET username = $1, first_name = $2, last_name = $3, timezone = $4';
+        let values = [username, firstName, lastName, timezone];
+        if (newPassword) {
+            const salt = yield bcrypt_1.default.genSalt(10);
+            const hashedPassword = yield bcrypt_1.default.hash(newPassword, salt);
+            query += ', password = $5';
+            values.push(hashedPassword);
+        }
+        query += ' WHERE id = $' + (values.length + 1) + ' RETURNING id, username, email, first_name, last_name, timezone';
+        values.push(userId);
+        const result = yield server_1.default.query(query, values);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const updatedUser = result.rows[0];
+        res.json({
+            id: updatedUser.id,
+            username: updatedUser.username,
+            email: updatedUser.email,
+            firstName: updatedUser.first_name,
+            lastName: updatedUser.last_name,
+            timezone: updatedUser.timezone
+        });
     }
     catch (error) {
-        console.error('Error saving profile picture:', error);
-        res.status(500).json({ message: 'Server error during profile picture update' });
+        console.error('Profile update error:', error);
+        res.status(500).json({ message: 'Server error during profile update' });
     }
 }));
 router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -130,44 +157,6 @@ router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         else {
             res.status(500).json({ message: 'Server error during login' });
         }
-    }
-}));
-router.get('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const userId = req.user.id;
-        const result = yield server_1.default.query('SELECT u.id, u.username, u.email, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1', [userId]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        console.log('Profile data:', result.rows[0]); // Add this line
-        res.json(result.rows[0]);
-    }
-    catch (error) {
-        console.error('Profile fetch error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-}));
-router.put('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const userId = req.user.id;
-        const { username, email } = req.body;
-        // Check if username already exists
-        if (username) {
-            const usernameCheck = yield server_1.default.query('SELECT id FROM users WHERE username = $1 AND id != $2', [username, userId]);
-            if (usernameCheck.rows.length > 0) {
-                return res.status(400).json({ message: 'Username already taken' });
-            }
-        }
-        // Update user profile
-        const result = yield server_1.default.query('UPDATE users SET username = COALESCE($1, username), email = COALESCE($2, email) WHERE id = $3 RETURNING id, username, email', [username, email, userId]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.json(result.rows[0]);
-    }
-    catch (error) {
-        console.error('Profile update error:', error);
-        res.status(500).json({ message: 'Server error' });
     }
 }));
 router.put('/change-password', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -286,50 +275,40 @@ router.put('/users/:id/role', auth_1.authMiddleware, isSiteAdmin, (req, res) => 
         res.status(500).json({ message: 'Server error' });
     }
 }));
-router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded' });
-    }
-    try {
-        const userId = req.user.id;
-        const profilePictureUrl = `/uploads/${req.file.filename}`;
-        yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-        res.json({ profilePictureUrl });
-    }
-    catch (error) {
-        console.error('Avatar upload error:', error);
-        res.status(500).json({ message: 'Server error during avatar upload' });
-    }
-}));
-// Update the existing /profile PUT route
-router.put('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const userId = req.user.id;
-        const { firstName, lastName, email, timezone } = req.body;
-        const result = yield server_1.default.query('UPDATE users SET first_name = $1, last_name = $2, email = $3, timezone = $4 WHERE id = $5 RETURNING id, username, email, first_name, last_name, timezone, profile_picture_url', [firstName, lastName, email, timezone, userId]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        res.json(result.rows[0]);
-    }
-    catch (error) {
-        console.error('Profile update error:', error);
-        res.status(500).json({ message: 'Server error during profile update' });
-    }
-}));
-router.post('/upload-avatar', auth_1.authMiddleware, upload.single('avatar'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded' });
-    }
-    try {
-        const userId = req.user.id;
-        const profilePictureUrl = `/uploads/${req.file.filename}`;
-        yield server_1.default.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
-        res.json({ profilePictureUrl });
-    }
-    catch (error) {
-        console.error('Avatar upload error:', error);
-        res.status(500).json({ message: 'Server error during avatar upload' });
-    }
-}));
 exports.default = router;
+/*
+router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+
+  try {
+    const userId = (req as any).user.id;
+    const profilePictureUrl = `/uploads/${req.file.filename}`;
+    
+    await pool.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+    
+    console.log('File uploaded:', req.file);
+    console.log('Profile picture URL:', profilePictureUrl);
+
+    res.json({ profilePictureUrl });
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    res.status(500).json({ message: 'Server error during avatar upload' });
+  }
+});
+
+router.put('/save-profile-picture', authMiddleware, async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+    const { profilePictureUrl } = req.body;
+
+    await pool.query('UPDATE newcloud_schema.users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, userId]);
+
+    res.json({ message: 'Profile picture updated successfully' });
+  } catch (error) {
+    console.error('Error saving profile picture:', error);
+    res.status(500).json({ message: 'Server error during profile picture update' });
+  }
+});
+*/ 
