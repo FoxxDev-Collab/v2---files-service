@@ -60,6 +60,7 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
         return res.status(400).json({ message: 'Username, password, first name, and last name are required' });
     }
     try {
+        console.log('Received registration request:', { username, email, firstName, lastName, timezone, passwordLength: password ? password.length : 0 });
         // Check if user already exists
         const userCheck = yield server_1.default.query('SELECT * FROM newcloud_schema.users WHERE username = $1', [username]);
         if (userCheck.rows.length > 0) {
@@ -74,7 +75,7 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
         }
         // Hash password
         const salt = yield bcrypt_1.default.genSalt(10);
-        const hashedPassword = yield bcrypt_1.default.hash(password, salt);
+        const hashedPassword = yield bcrypt_1.default.hash(String(password), salt);
         // Get the 'user' role id
         const roleResult = yield server_1.default.query('SELECT id FROM newcloud_schema.roles WHERE name = $1', ['user']);
         if (roleResult.rows.length === 0) {
@@ -120,22 +121,6 @@ router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* 
         }
     }
 }));
-/* router.get('/profile', authMiddleware, async (req, res) => {
-  try {
-    const userId = (req as any).user.id;
-    const result = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [userId]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Profile fetch error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-*/
 router.get('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;

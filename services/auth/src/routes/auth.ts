@@ -51,55 +51,57 @@ router.post('/upload-avatar', authMiddleware, upload.single('avatar'), async (re
 });
 
 router.post('/register', async (req, res) => {
-    const { username, email, password, firstName, lastName, timezone } = req.body;
-  
-    if (!username || !password || !firstName || !lastName) {
-      return res.status(400).json({ message: 'Username, password, first name, and last name are required' });
+  const { username, email, password, firstName, lastName, timezone } = req.body;
+
+  if (!username || !password || !firstName || !lastName) {
+    return res.status(400).json({ message: 'Username, password, first name, and last name are required' });
+  }
+
+  try {
+    console.log('Received registration request:', { username, email, firstName, lastName, timezone, passwordLength: password ? password.length : 0 });
+
+    // Check if user already exists
+    const userCheck = await pool.query('SELECT * FROM newcloud_schema.users WHERE username = $1', [username]);
+    if (userCheck.rows.length > 0) {
+      return res.status(400).json({ message: 'Username already exists' });
     }
-  
-    try {
-      // Check if user already exists
-      const userCheck = await pool.query('SELECT * FROM newcloud_schema.users WHERE username = $1', [username]);
-      if (userCheck.rows.length > 0) {
-        return res.status(400).json({ message: 'Username already exists' });
+
+    // Check if email exists if provided
+    if (email) {
+      const emailCheck = await pool.query('SELECT * FROM newcloud_schema.users WHERE email = $1', [email]);
+      if (emailCheck.rows.length > 0) {
+        return res.status(400).json({ message: 'Email already in use' });
       }
-  
-      // Check if email exists if provided
-      if (email) {
-        const emailCheck = await pool.query('SELECT * FROM newcloud_schema.users WHERE email = $1', [email]);
-        if (emailCheck.rows.length > 0) {
-          return res.status(400).json({ message: 'Email already in use' });
-        }
-      }
-  
-      // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-  
-      // Get the 'user' role id
-      const roleResult = await pool.query('SELECT id FROM newcloud_schema.roles WHERE name = $1', ['user']);
-      if (roleResult.rows.length === 0) {
-        return res.status(500).json({ message: 'Default role not found' });
-      }
-      const roleId = roleResult.rows[0].id;
-  
-      // Insert new user with the 'user' role
-      const newUser = await pool.query(
-        'INSERT INTO newcloud_schema.users (username, email, password, first_name, last_name, timezone, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username',
-        [username, email || null, hashedPassword, firstName, lastName, timezone || 'America/Boise', roleId]
-      );
-  
-      const token = generateToken({ id: newUser.rows[0].id, username: newUser.rows[0].username });
-      res.status(201).json({ token });
-    } catch (error) {
-        console.error('Registration error:', error);
-        if (error instanceof Error) {
-          res.status(500).json({ message: 'Server error during registration', error: error.message });
-        } else {
-          res.status(500).json({ message: 'Server error during registration' });
-        }
-      }
-  });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(String(password), salt);
+
+    // Get the 'user' role id
+    const roleResult = await pool.query('SELECT id FROM newcloud_schema.roles WHERE name = $1', ['user']);
+    if (roleResult.rows.length === 0) {
+      return res.status(500).json({ message: 'Default role not found' });
+    }
+    const roleId = roleResult.rows[0].id;
+
+    // Insert new user with the 'user' role
+    const newUser = await pool.query(
+      'INSERT INTO newcloud_schema.users (username, email, password, first_name, last_name, timezone, role_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, username',
+      [username, email || null, hashedPassword, firstName, lastName, timezone || 'America/Boise', roleId]
+    );
+
+    const token = generateToken({ id: newUser.rows[0].id, username: newUser.rows[0].username });
+    res.status(201).json({ token });
+  } catch (error) {
+    console.error('Registration error:', error);
+    if (error instanceof Error) {
+      res.status(500).json({ message: 'Server error during registration', error: error.message });
+    } else {
+      res.status(500).json({ message: 'Server error during registration' });
+    }
+  }
+});
   
   router.post('/login', async (req, res) => {
     const { username, password } = req.body;
@@ -127,24 +129,6 @@ router.post('/register', async (req, res) => {
         }
       }
   });
-
-
-/* router.get('/profile', authMiddleware, async (req, res) => {
-  try {
-    const userId = (req as any).user.id;
-    const result = await pool.query('SELECT id, username, email FROM users WHERE id = $1', [userId]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Profile fetch error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-*/
 
 router.get('/profile', authMiddleware, async (req, res) => {
     try {

@@ -38,7 +38,7 @@ export default function Register() {
       const response = await api.post('/auth/register', {
         username,
         email,
-        password,
+        password: String(password), // Explicitly convert to string
         firstName,
         lastName,
         timezone
@@ -47,7 +47,9 @@ export default function Register() {
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Registration error:', err.response?.data || err.message);
-      if (err.response?.data?.message) {
+      if (err.response?.data?.error) {
+        setError(`Registration failed: ${err.response.data.error}`);
+      } else if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else {
         setError('Registration failed. Please try again.');

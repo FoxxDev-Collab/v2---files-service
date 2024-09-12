@@ -2,7 +2,7 @@
     "dev": {
       "driver": "pg",
       "user": "newcloud_user",
-      "password": "NOTthisday@@22",
+      "password": "foxxdev1dt431",
       "host": "localhost",
       "database": "newcloud",
       "port": "5432"
