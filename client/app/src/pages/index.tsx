@@ -19,11 +19,15 @@ export default function Home() {
       const response = await api.post('/auth/login', { username, password });
       login(response.data.token);
       router.push('/dashboard');
-    } catch (err) {
-      setError('Invalid username or password');
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setError(err.response.data.message);
+      } else {
+        setError('Invalid username or password');
+      }
     }
   };
-
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">

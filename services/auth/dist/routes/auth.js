@@ -74,9 +74,16 @@ router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, functio
 router.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
     try {
-        const user = yield server_1.default.query('SELECT * FROM newcloud_schema.users WHERE username = $1', [username]);
-        if (user.rows.length === 0 || !(yield bcrypt_1.default.compare(password, user.rows[0].password))) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+        const user = yield server_1.default.query('SELECT * FROM users WHERE username = $1', [username]);
+        if (user.rows.length === 0) {
+            return res.status(400).json({ message: 'Invalid username or password' });
+        }
+        const isPasswordValid = yield bcrypt_1.default.compare(password, user.rows[0].password);
+        if (!isPasswordValid) {
+            return res.status(400).json({ message: 'Invalid username or password' });
+        }
+        if (!user.rows[0].is_active) {
+            return res.status(403).json({ message: 'Your account has been disabled. Please contact an administrator.' });
         }
         const token = (0, auth_1.generateToken)({ id: user.rows[0].id, username: user.rows[0].username });
         res.json({ token });
@@ -103,9 +110,9 @@ router.get('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, vo
 router.put('/profile', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;
-        const { firstName, lastName, email, timezone } = req.body;
+        const { first_name, last_name, email, timezone } = req.body;
         console.log('Received profile update request:', req.body);
-        const result = yield server_1.default.query('UPDATE users SET first_name = $1, last_name = $2, email = $3, timezone = $4 WHERE id = $5 RETURNING id, username, email, first_name, last_name, timezone', [firstName, lastName, email, timezone, userId]);
+        const result = yield server_1.default.query('UPDATE users SET first_name = $1, last_name = $2, email = $3, timezone = $4 WHERE id = $5 RETURNING id, username, email, first_name, last_name, timezone', [first_name || '', last_name || '', email, timezone, userId]);
         if (result.rows.length === 0) {
             console.log('User not found for update');
             return res.status(404).json({ message: 'User not found' });
@@ -174,7 +181,7 @@ const isAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
 // Get all users (admin only)
 router.get('/users', auth_1.authMiddleware, isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const result = yield server_1.default.query('SELECT u.id, u.username, u.email, r.name as role FROM users u JOIN roles r ON u.role_id = r.id');
+        const result = yield server_1.default.query('SELECT u.id, u.username, u.email, r.name as role, u.is_active FROM users u JOIN roles r ON u.role_id = r.id');
         res.json(result.rows);
     }
     catch (error) {
@@ -214,6 +221,17 @@ router.delete('/users/:id', auth_1.authMiddleware, isAdmin, (req, res) => __awai
         // Delete the user
         yield server_1.default.query('DELETE FROM users WHERE id = $1', [id]);
         res.json({ message: 'User deleted successfully' });
+    }
+    catch (error) {
+        serverErrorResponse(res, error);
+    }
+}));
+router.put('/users/:id/status', auth_1.authMiddleware, isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    try {
+        yield server_1.default.query('UPDATE users SET is_active = $1 WHERE id = $2', [isActive, id]);
+        res.json({ message: 'User status updated successfully' });
     }
     catch (error) {
         serverErrorResponse(res, error);
