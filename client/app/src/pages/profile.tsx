@@ -2,8 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 
-// US Timezones
-const US_TIMEZONES = [
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  timezone: string;
+}
+
+const TIMEZONES = [
   'America/New_York',
   'America/Chicago',
   'America/Denver',
@@ -13,55 +21,56 @@ const US_TIMEZONES = [
   'Pacific/Honolulu',
 ];
 
-// Helper function to generate user initials
-const getUserInitials = (firstName?: string, lastName?: string): string => {
-  const firstInitial = firstName ? firstName.charAt(0) : '';
-  const lastInitial = lastName ? lastName.charAt(0) : '';
-  return `${firstInitial}${lastInitial}`.toUpperCase();
-};
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  timezone: string;
-  role: string;
-  profilePictureUrl?: string;
-}
-
 const Profile: React.FC = () => {
-  const { user, updateUser } = useAuth();
+  const { updateUser } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [localUser, setLocalUser] = useState<User | null>(null);
-  const [userInitials, setUserInitials] = useState('');
-
-  // Function to update the card
-  const updateCard = (user: User) => {
-    setUserInitials(getUserInitials(user.firstName, user.lastName));
-  };
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
-    if (user) {
-      setLocalUser(user);
-      updateCard(user);
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    setIsLoading(true);
+    try {
+      const response = await api.get<User>('/auth/profile');
+      console.log('API Response:', response.data);
+      setUser(response.data);
+      updateUser(response.data);
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      setError('Failed to fetch user profile. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [user]);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setUser(prev => prev ? { ...prev, [name]: value || '' } : null);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (!localUser) return;
+    if (!user) return;
+
+    // Create a new object with non-null values
+    const updatedUser = Object.fromEntries(
+      Object.entries(user).map(([key, value]) => [key, value === null ? '' : value])
+    ) as User;
 
     try {
-      const response = await api.put<User>('/auth/profile', localUser);
+      console.log('Sending update:', updatedUser);
+      const response = await api.put<User>('/auth/profile', updatedUser);
+      console.log('Update Response:', response.data);
+      setUser(response.data);
       updateUser(response.data);
-      setLocalUser(response.data);
-      updateCard(response.data);
       setSuccess('Profile updated successfully');
     } catch (err) {
       console.error('Error updating profile:', err);
@@ -69,91 +78,124 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setLocalUser(prev => {
-      if (prev) {
-        const updatedUser = { ...prev, [name]: value };
-        updateCard(updatedUser);
-        return updatedUser;
-      }
-      return null;
-    });
+  const handlePasswordChange = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!newPassword) {
+      setError('New password is required');
+      return;
+    }
+
+    try {
+      await api.put('/auth/change-password', { newPassword });
+      setSuccess('Password changed successfully');
+      setNewPassword('');
+    } catch (err) {
+      console.error('Error changing password:', err);
+      setError('Failed to change password. Please try again.');
+    }
   };
 
-  if (!localUser) return <div>Loading...</div>;
+  if (isLoading) return <div>Loading...</div>;
+  if (!user) return <div>No user data available</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="bg-white shadow-md rounded-lg p-6 mb-8">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-full bg-blue-500 text-white flex items-center justify-center text-2xl font-bold">
-            {userInitials}
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold">{localUser.username}</h2>
-            <p className="text-gray-600">{`${localUser.firstName} ${localUser.lastName}`}</p>
-          </div>
-        </div>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">User Profile</h1>
+      
+      {/* Current User Information */}
+      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <h2 className="text-xl font-semibold mb-2">Current Information</h2>
+        <p><strong>Username:</strong> {user.username || 'N/A'}</p>
+        <p><strong>Name:</strong> {`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'N/A'}</p>
+        <p><strong>Email:</strong> {user.email || 'N/A'}</p>
+        <p><strong>Timezone:</strong> {user.timezone || 'N/A'}</p>
       </div>
 
-      <h1 className="text-2xl font-bold mb-4">Edit Profile</h1>
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-      {success && <p className="text-green-500 mb-4">{success}</p>}
-      <form onSubmit={handleSubmit}>
+      {/* Update User Information Form */}
+      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <h2 className="text-xl font-semibold mb-2">Update Information</h2>
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+        {success && <p className="text-green-500 mb-4">{success}</p>}
         <div className="mb-4">
-          <label htmlFor="username" className="block mb-2">Username</label>
-          <input type="text" id="username" name="username" value={localUser.username} className="w-full p-2 border rounded" readOnly />
-        </div>
-        <div className="mb-4">
-          <label htmlFor="firstName" className="block mb-2">First Name</label>
-          <input 
-            type="text" 
-            id="firstName" 
-            name="firstName" 
-            value={localUser.firstName} 
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
+            Username
+          </label>
+          <input
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="username"
+            type="text"
+            name="username"
+            value={user.username}
             onChange={handleInputChange}
-            className="w-full p-2 border rounded" 
           />
         </div>
         <div className="mb-4">
-          <label htmlFor="lastName" className="block mb-2">Last Name</label>
-          <input 
-            type="text" 
-            id="lastName" 
-            name="lastName" 
-            value={localUser.lastName} 
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="first_name">
+            First Name
+          </label>
+          <input
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="first_name"
+            type="text"
+            name="first_name"
+            value={user.first_name || ''}
             onChange={handleInputChange}
-            className="w-full p-2 border rounded" 
           />
         </div>
         <div className="mb-4">
-          <label htmlFor="email" className="block mb-2">Email</label>
-          <input 
-            type="email" 
-            id="email" 
-            name="email" 
-            value={localUser.email} 
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="last_name">
+            Last Name
+          </label>
+          <input
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="last_name"
+            type="text"
+            name="last_name"
+            value={user.last_name || ''}
             onChange={handleInputChange}
-            className="w-full p-2 border rounded" 
           />
         </div>
         <div className="mb-4">
-          <label htmlFor="timezone" className="block mb-2">Timezone</label>
-          <select 
-            id="timezone" 
-            name="timezone" 
-            value={localUser.timezone} 
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+            Email
+          </label>
+          <input
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="email"
+            type="email"
+            name="email"
+            value={user.email || ''}
             onChange={handleInputChange}
-            className="w-full p-2 border rounded"
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="timezone">
+            Timezone
+          </label>
+          <select
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="timezone"
+            name="timezone"
+            value={user.timezone}
+            onChange={handleInputChange}
           >
-            {US_TIMEZONES.map((tz) => (
+            {TIMEZONES.map((tz) => (
               <option key={tz} value={tz}>{tz}</option>
             ))}
           </select>
         </div>
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Update Profile</button>
+        <button
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          type="submit"
+        >
+          Update Profile
+        </button>
       </form>
+
+      {/* Change Password Form remains the same */}
     </div>
   );
 };

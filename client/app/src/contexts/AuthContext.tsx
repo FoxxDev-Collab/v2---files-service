@@ -10,7 +10,6 @@ export interface User {
   lastName: string;
   timezone: string;
   role: string;
-  profilePictureUrl?: string;
 }
 
 interface AuthContextType {

@@ -112,13 +112,13 @@ router.get('/profile', authMiddleware, async (req, res) => {
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).user.id;
-    const { firstName, lastName, email, timezone } = req.body;
+    const { first_name, last_name, email, timezone } = req.body;
 
     console.log('Received profile update request:', req.body);
 
     const result = await pool.query(
       'UPDATE users SET first_name = $1, last_name = $2, email = $3, timezone = $4 WHERE id = $5 RETURNING id, username, email, first_name, last_name, timezone',
-      [firstName, lastName, email, timezone, userId]
+      [first_name || '', last_name || '', email, timezone, userId]
     );
 
     if (result.rows.length === 0) {
