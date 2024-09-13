@@ -12,7 +12,8 @@ interface User {
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
-  const [newUser, setNewUser] = useState({ username: '', email: '', password: '', role: 'user' });
+  const [newUser, setNewUser] = useState({ username: '', email: '', password: '', firstName: '', lastName: '', timezone: 'America/Boise', role: 'user' });
+  const [error, setError] = useState('');
   const { user } = useAuth();
   const router = useRouter();
 
@@ -30,6 +31,7 @@ export default function UserManagement() {
       setUsers(response.data);
     } catch (error) {
       console.error('Failed to fetch users', error);
+      setError('Failed to fetch users. Please try again.');
     }
   };
 
@@ -39,17 +41,20 @@ export default function UserManagement() {
       fetchUsers(); // Refresh the user list
     } catch (error) {
       console.error('Failed to update user role', error);
+      setError('Failed to update user role. Please try again.');
     }
   };
 
   const createUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
       await api.post('/auth/register', newUser);
-      setNewUser({ username: '', email: '', password: '', role: 'user' });
+      setNewUser({ username: '', email: '', password: '', firstName: '', lastName: '', timezone: 'America/Boise', role: 'user' });
       fetchUsers(); // Refresh the user list
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create user', error);
+      setError(error.response?.data?.message || 'Failed to create user. Please try again.');
     }
   };
 
@@ -60,6 +65,7 @@ export default function UserManagement() {
         fetchUsers(); // Refresh the user list
       } catch (error) {
         console.error('Failed to delete user', error);
+        setError('Failed to delete user. Please try again.');
       }
     }
   };
@@ -69,6 +75,8 @@ export default function UserManagement() {
       <div className="relative py-3 sm:max-w-x3 sm:mx-auto">
         <div className="relative px-2 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
           <h1 className="text-2xl font-semibold mb-6">User Management</h1>
+          
+          {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
           
           {/* Create User Form */}
           <form onSubmit={createUser} className="mb-8">
@@ -97,6 +105,33 @@ export default function UserManagement() {
               className="mb-2 p-2 w-full border rounded"
               required
             />
+            <input
+              type="text"
+              placeholder="First Name"
+              value={newUser.firstName}
+              onChange={(e) => setNewUser({...newUser, firstName: e.target.value})}
+              className="mb-2 p-2 w-full border rounded"
+              required
+            />
+            <input
+              type="text"
+              placeholder="Last Name"
+              value={newUser.lastName}
+              onChange={(e) => setNewUser({...newUser, lastName: e.target.value})}
+              className="mb-2 p-2 w-full border rounded"
+              required
+            />
+            <select
+              value={newUser.timezone}
+              onChange={(e) => setNewUser({...newUser, timezone: e.target.value})}
+              className="mb-2 p-2 w-full border rounded"
+            >
+              <option value="America/Boise">America/Boise</option>
+              <option value="America/New_York">America/New_York</option>
+              <option value="America/Chicago">America/Chicago</option>
+              <option value="America/Denver">America/Denver</option>
+              <option value="America/Los_Angeles">America/Los_Angeles</option>
+            </select>
             <select
               value={newUser.role}
               onChange={(e) => setNewUser({...newUser, role: e.target.value})}
