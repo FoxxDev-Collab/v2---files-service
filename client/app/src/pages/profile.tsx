@@ -3,12 +3,19 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 
 interface User {
-  id: string;
+  id: number;
   username: string;
   email: string;
   first_name: string;
   last_name: string;
   timezone: string;
+  teams?: Team[];
+}
+
+interface Team {
+  id: number;
+  name: string;
+  role: string;
 }
 
 const TIMEZONES = [
@@ -37,9 +44,14 @@ const Profile: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await api.get<User>('/auth/profile');
-      console.log('API Response:', response.data);
-      setUser(response.data);
-      updateUser(response.data);
+      const userData = response.data;
+      
+      // Fetch user's teams
+      const teamsResponse = await api.get('/auth/teams');
+      userData.teams = teamsResponse.data;
+
+      setUser(userData);
+      updateUser(userData);
     } catch (err) {
       console.error('Error fetching user profile:', err);
       setError('Failed to fetch user profile. Please try again.');
@@ -60,15 +72,12 @@ const Profile: React.FC = () => {
 
     if (!user) return;
 
-    // Create a new object with non-null values
     const updatedUser = Object.fromEntries(
       Object.entries(user).map(([key, value]) => [key, value === null ? '' : value])
     ) as User;
 
     try {
-      console.log('Sending update:', updatedUser);
       const response = await api.put<User>('/auth/profile', updatedUser);
-      console.log('Update Response:', response.data);
       setUser(response.data);
       updateUser(response.data);
       setSuccess('Profile updated successfully');
@@ -105,13 +114,35 @@ const Profile: React.FC = () => {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">User Profile</h1>
       
-      {/* Current User Information */}
-      <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-        <h2 className="text-xl font-semibold mb-2">Current Information</h2>
-        <p><strong>Username:</strong> {user.username || 'N/A'}</p>
-        <p><strong>Name:</strong> {`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'N/A'}</p>
-        <p><strong>Email:</strong> {user.email || 'N/A'}</p>
-        <p><strong>Timezone:</strong> {user.timezone || 'N/A'}</p>
+      <div className="flex flex-wrap -mx-2">
+        {/* Left Column: Current Information */}
+        <div className="w-full md:w-1/2 px-2 mb-4">
+          <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <h2 className="text-xl font-semibold mb-2">Current Information</h2>
+            <p><strong>Username:</strong> {user.username || 'N/A'}</p>
+            <p><strong>Name:</strong> {`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'N/A'}</p>
+            <p><strong>Email:</strong> {user.email || 'N/A'}</p>
+            <p><strong>Timezone:</strong> {user.timezone || 'N/A'}</p>
+          </div>
+        </div>
+
+        {/* Right Column: Teams Information */}
+        <div className="w-full md:w-1/2 px-2 mb-4">
+          <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <h2 className="text-xl font-semibold mb-2">Teams</h2>
+            {user.teams && user.teams.length > 0 ? (
+              <ul>
+                {user.teams.map(team => (
+                  <li key={team.id} className="mb-2">
+                    <strong>{team.name}</strong> - {team.role}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>You are not a member of any teams.</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Update User Information Form */}

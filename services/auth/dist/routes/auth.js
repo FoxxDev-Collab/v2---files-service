@@ -40,6 +40,36 @@ const serverErrorResponse = (res, error) => {
     console.error('Server error:', error);
     res.status(500).json({ message: 'Internal server error' });
 };
+const isTeamManager = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { teamId } = req.params;
+    const userId = req.user.id;
+    try {
+        const result = yield server_1.default.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2 AND role = $3', [teamId, userId, 'manager']);
+        if (result.rows.length === 0) {
+            return res.status(403).json({ message: 'You do not have manager permissions for this team' });
+        }
+        next();
+    }
+    catch (error) {
+        console.error('Error checking team manager permissions:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+const isTeamMember = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { teamId } = req.params;
+    const userId = req.user.id;
+    try {
+        const result = yield server_1.default.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, userId]);
+        if (result.rows.length === 0) {
+            return res.status(403).json({ message: 'You are not a member of this team' });
+        }
+        next();
+    }
+    catch (error) {
+        console.error('Error checking team member permissions:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
 // User registration
 router.post('/register', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, email, password, firstName, lastName, timezone } = req.body;
@@ -261,6 +291,173 @@ router.put('/users/:id/status', auth_1.authMiddleware, isAdmin, (req, res) => __
     }
     catch (error) {
         serverErrorResponse(res, error);
+    }
+}));
+// Create a new team
+router.post('/teams', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { name } = req.body;
+    const userId = req.user.id;
+    if (!name) {
+        return res.status(400).json({ message: 'Team name is required' });
+    }
+    try {
+        const result = yield server_1.default.query('INSERT INTO teams (name) VALUES ($1) RETURNING id, name, created_at', [name]);
+        const team = result.rows[0];
+        // Add the creator as a team manager
+        yield server_1.default.query('INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3)', [team.id, userId, 'manager']);
+        res.status(201).json(team);
+    }
+    catch (error) {
+        console.error('Error creating team:', error);
+        res.status(500).json({ message: 'Failed to create team' });
+    }
+}));
+// List teams for the authenticated user
+router.get('/teams', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const userId = req.user.id;
+    try {
+        const result = yield server_1.default.query(`SELECT t.id, t.name, t.created_at, tm.role
+       FROM teams t
+       JOIN team_members tm ON t.id = tm.team_id
+       WHERE tm.user_id = $1`, [userId]);
+        res.json(result.rows);
+    }
+    catch (error) {
+        console.error('Error fetching teams:', error);
+        res.status(500).json({ message: 'Failed to fetch teams' });
+    }
+}));
+// Get team details
+router.get('/teams/:teamId', auth_1.authMiddleware, isTeamManager, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { teamId } = req.params;
+    const userId = req.user.id;
+    try {
+        const teamResult = yield server_1.default.query(`SELECT t.*, tm.role
+       FROM teams t
+       JOIN team_members tm ON t.id = tm.team_id
+       WHERE t.id = $1 AND tm.user_id = $2`, [teamId, userId]);
+        if (teamResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Team not found or you do not have access' });
+        }
+        const membersResult = yield server_1.default.query(`SELECT u.id, u.username, u.email, tm.role
+       FROM users u
+       JOIN team_members tm ON u.id = tm.user_id
+       WHERE tm.team_id = $1`, [teamId]);
+        const team = teamResult.rows[0];
+        team.members = membersResult.rows;
+        res.json(team);
+    }
+    catch (error) {
+        console.error('Error fetching team details:', error);
+        res.status(500).json({ message: 'Failed to fetch team details' });
+    }
+}));
+// Update team details
+router.put('/teams/:teamId', auth_1.authMiddleware, isTeamManager, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { teamId } = req.params;
+    const { name } = req.body;
+    const userId = req.user.id;
+    if (!name) {
+        return res.status(400).json({ message: 'Team name is required' });
+    }
+    try {
+        // Check if the user is a manager of the team
+        const managerCheck = yield server_1.default.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2 AND role = $3', [teamId, userId, 'manager']);
+        if (managerCheck.rows.length === 0) {
+            return res.status(403).json({ message: 'You do not have permission to update this team' });
+        }
+        const result = yield server_1.default.query('UPDATE teams SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *', [name, teamId]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Team not found' });
+        }
+        res.json(result.rows[0]);
+    }
+    catch (error) {
+        console.error('Error updating team:', error);
+        res.status(500).json({ message: 'Failed to update team' });
+    }
+}));
+// Delete a team
+router.delete('/teams/:teamId', auth_1.authMiddleware, isTeamManager, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { teamId } = req.params;
+    const userId = req.user.id;
+    try {
+        // Check if the user is a manager of the team
+        const managerCheck = yield server_1.default.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2 AND role = $3', [teamId, userId, 'manager']);
+        if (managerCheck.rows.length === 0) {
+            return res.status(403).json({ message: 'You do not have permission to delete this team' });
+        }
+        yield server_1.default.query('DELETE FROM teams WHERE id = $1', [teamId]);
+        res.json({ message: 'Team deleted successfully' });
+    }
+    catch (error) {
+        console.error('Error deleting team:', error);
+        res.status(500).json({ message: 'Failed to delete team' });
+    }
+}));
+// Add a member to a team
+router.post('/teams/:teamId/members', auth_1.authMiddleware, isTeamManager, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { teamId } = req.params;
+    const { userId, role } = req.body;
+    const currentUserId = req.user.id;
+    if (!userId || !role) {
+        return res.status(400).json({ message: 'User ID and role are required' });
+    }
+    try {
+        // Check if the current user is a manager of the team
+        const managerCheck = yield server_1.default.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2 AND role = $3', [teamId, currentUserId, 'manager']);
+        if (managerCheck.rows.length === 0) {
+            return res.status(403).json({ message: 'You do not have permission to add members to this team' });
+        }
+        const result = yield server_1.default.query('INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) RETURNING *', [teamId, userId, role]);
+        res.status(201).json(result.rows[0]);
+    }
+    catch (error) {
+        console.error('Error adding team member:', error);
+        res.status(500).json({ message: 'Failed to add team member' });
+    }
+}));
+// Remove a member from a team
+router.delete('/teams/:teamId/members/:userId', auth_1.authMiddleware, isTeamManager, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { teamId, userId } = req.params;
+    const currentUserId = req.user.id;
+    try {
+        // Check if the current user is a manager of the team
+        const managerCheck = yield server_1.default.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2 AND role = $3', [teamId, currentUserId, 'manager']);
+        if (managerCheck.rows.length === 0) {
+            return res.status(403).json({ message: 'You do not have permission to remove members from this team' });
+        }
+        yield server_1.default.query('DELETE FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, userId]);
+        res.json({ message: 'Team member removed successfully' });
+    }
+    catch (error) {
+        console.error('Error removing team member:', error);
+        res.status(500).json({ message: 'Failed to remove team member' });
+    }
+}));
+// Update a member's role in a team
+router.put('/teams/:teamId/members/:userId/role', auth_1.authMiddleware, isTeamManager, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { teamId, userId } = req.params;
+    const { role } = req.body;
+    const currentUserId = req.user.id;
+    if (!role) {
+        return res.status(400).json({ message: 'Role is required' });
+    }
+    try {
+        // Check if the current user is a manager of the team
+        const managerCheck = yield server_1.default.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2 AND role = $3', [teamId, currentUserId, 'manager']);
+        if (managerCheck.rows.length === 0) {
+            return res.status(403).json({ message: 'You do not have permission to update member roles in this team' });
+        }
+        const result = yield server_1.default.query('UPDATE team_members SET role = $1 WHERE team_id = $2 AND user_id = $3 RETURNING *', [role, teamId, userId]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Team member not found' });
+        }
+        res.json(result.rows[0]);
+    }
+    catch (error) {
+        console.error('Error updating team member role:', error);
+        res.status(500).json({ message: 'Failed to update team member role' });
     }
 }));
 exports.default = router;
