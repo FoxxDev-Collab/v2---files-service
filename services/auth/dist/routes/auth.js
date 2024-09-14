@@ -181,11 +181,16 @@ const isAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* 
 // Get all users (admin only)
 router.get('/users', auth_1.authMiddleware, isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const result = yield server_1.default.query('SELECT u.id, u.username, u.email, r.name as role, u.is_active FROM users u JOIN roles r ON u.role_id = r.id');
+        const result = yield server_1.default.query(`
+      SELECT u.id, u.username, u.email, r.name as role, u.is_active 
+      FROM users u 
+      JOIN roles r ON u.role_id = r.id
+    `);
         res.json(result.rows);
     }
     catch (error) {
-        serverErrorResponse(res, error);
+        console.error('Error fetching users:', error);
+        res.status(500).json({ message: 'Failed to fetch users' });
     }
 }));
 // Update user role (admin only)
@@ -228,9 +233,30 @@ router.delete('/users/:id', auth_1.authMiddleware, isAdmin, (req, res) => __awai
 }));
 router.put('/users/:id/status', auth_1.authMiddleware, isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    const { isActive } = req.body;
+    const { is_active } = req.body;
+    if (typeof is_active !== 'boolean') {
+        return res.status(400).json({ message: 'Invalid status value' });
+    }
     try {
-        yield server_1.default.query('UPDATE users SET is_active = $1 WHERE id = $2', [isActive, id]);
+        const result = yield server_1.default.query('UPDATE users SET is_active = $1 WHERE id = $2 RETURNING id, username, email, is_active', [is_active, id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.json({
+            message: `User ${is_active ? 'enabled' : 'disabled'} successfully`,
+            user: result.rows[0]
+        });
+    }
+    catch (error) {
+        console.error('Error updating user status:', error);
+        res.status(500).json({ message: 'Failed to update user status' });
+    }
+}));
+router.put('/users/:id/status', auth_1.authMiddleware, isAdmin, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    try {
+        yield server_1.default.query('UPDATE users SET is_active = $1 WHERE id = $2', [is_active, id]);
         res.json({ message: 'User status updated successfully' });
     }
     catch (error) {
