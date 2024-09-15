@@ -12,3 +12,7 @@ ALTER USER newcloud_user WITH PASSWORD 'foxxdev1dt431';
 SELECT COUNT(*) as total_users, COUNT(CASE WHEN is_active THEN 1 END) as active_users FROM newcloud_schema.users;
 
 SELECT id, username, email, is_active FROM users;
+
+SET search_path TO newcloud_schema, public;
+
+ALTER TABLE newcloud_schema.teams ADD COLUMN description VARCHAR(500);

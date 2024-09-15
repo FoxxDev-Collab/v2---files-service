@@ -3,7 +3,7 @@ import { setToken, getToken, removeToken } from '../utils/auth';
 import api from '../utils/api';
 
 export interface User {
-  id: string;
+  id: number;  // Changed from string to number
   username: string;
   email: string;
   firstName: string;

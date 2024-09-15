@@ -1,3 +1,5 @@
+// src/components/Header.tsx
+
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +25,9 @@ const Header: React.FC = () => {
             <div className="flex items-center space-x-4">
               <Link href="/dashboard" className="text-gray-800 hover:text-blue-500">
                 Dashboard
+              </Link>
+              <Link href="/teams" className="text-gray-800 hover:text-blue-500">
+                Teams
               </Link>
               <Link href="/profile" className="text-gray-800 hover:text-blue-500">
                 Profile
