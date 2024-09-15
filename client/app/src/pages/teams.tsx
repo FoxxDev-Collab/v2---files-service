@@ -46,6 +46,9 @@ const TeamsPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { user } = useAuth();
   const router = useRouter();
+  const capitalizeFirstLetter = (string: string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
 
   useEffect(() => {
     fetchTeams();
@@ -232,10 +235,21 @@ const TeamsPage: React.FC = () => {
           </div>
         )}
         {selectedTeam ? (
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">{selectedTeam.name}</h2>
-            <p>Your role in this team: {selectedTeam.members?.find(member => member.id === user?.id)?.role || 'Unknown'}</p>
-          
+          <div className='mb-8'>
+          <h2 className="inline-block text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-400 mb-2">
+    {selectedTeam.name}
+  </h2>
+          <p className="mb-4">
+            Your role in this team: {' '}
+            <span 
+              className="font-semibold text-blue-600 px-2 py-1 rounded 
+                         shadow-[0_0_10px_rgba(59,130,246,0.5)] 
+                         transition-all duration-300 ease-in-out
+                         hover:shadow-[0_0_15px_rgba(59,130,246,0.7)]"
+            >
+              {capitalizeFirstLetter(selectedTeam.members?.find(member => member.id === user?.id)?.role || 'Unknown')}
+            </span>
+          </p>
             {/* Team Members and Description */}
             <div className="flex flex-wrap -mx-2 mb-8">
               {/* Team Members */}
