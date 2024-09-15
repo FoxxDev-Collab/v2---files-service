@@ -8,6 +8,13 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
+interface AuthenticatedRequest extends express.Request {
+  user?: {
+    id: number;
+    username: string;
+  };
+}
+
 const router = express.Router();
 
 // File upload configuration
@@ -395,65 +402,63 @@ router.get('/teams', authMiddleware, async (req, res) => {
 });
 
 // Get team details
-router.get('/teams/:teamId', authMiddleware, isTeamManager, async (req, res) => {
-  const { teamId } = req.params;
-  const userId = (req as any).user.id;
+router.get('/teams/:teamId', authMiddleware, async (req: AuthenticatedRequest, res: express.Response) => {
+  const teamId = req.params.teamId;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
 
   try {
-    const teamResult = await pool.query(
-      `SELECT t.*, tm.role
-       FROM teams t
-       JOIN team_members tm ON t.id = tm.team_id
-       WHERE t.id = $1 AND tm.user_id = $2`,
+    // Check if the user is a member of the team and get their role
+    const memberCheck = await pool.query(
+      'SELECT role FROM team_members WHERE team_id = $1 AND user_id = $2',
       [teamId, userId]
     );
 
-    if (teamResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Team not found or you do not have access' });
+    if (memberCheck.rows.length === 0) {
+      return res.status(403).json({ message: 'You are not a member of this team' });
     }
 
-    const membersResult = await pool.query(
-      `SELECT u.id, u.username, u.email, tm.role
-       FROM users u
-       JOIN team_members tm ON u.id = tm.user_id
-       WHERE tm.team_id = $1`,
+    const userRole = memberCheck.rows[0].role;
+
+    // Fetch team details
+    const teamDetails = await pool.query(
+      'SELECT * FROM teams WHERE id = $1',
       [teamId]
     );
 
-    const team = teamResult.rows[0];
-    team.members = membersResult.rows;
+    // Fetch team members
+    const teamMembers = await pool.query(
+      'SELECT u.id, u.username, u.email, tm.role FROM users u JOIN team_members tm ON u.id = tm.user_id WHERE tm.team_id = $1',
+      [teamId]
+    );
 
-    res.json(team);
+    res.json({
+      ...teamDetails.rows[0],
+      members: teamMembers.rows,
+      userRole: userRole
+    });
   } catch (error) {
     console.error('Error fetching team details:', error);
-    res.status(500).json({ message: 'Failed to fetch team details' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
 // Update team details
 router.put('/teams/:teamId', authMiddleware, isTeamManager, async (req, res) => {
   const { teamId } = req.params;
-  const { name } = req.body;
-  const userId = (req as any).user.id;
+  const { name, description } = req.body;
 
   if (!name) {
     return res.status(400).json({ message: 'Team name is required' });
   }
 
   try {
-    // Check if the user is a manager of the team
-    const managerCheck = await pool.query(
-      'SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2 AND role = $3',
-      [teamId, userId, 'manager']
-    );
-
-    if (managerCheck.rows.length === 0) {
-      return res.status(403).json({ message: 'You do not have permission to update this team' });
-    }
-
     const result = await pool.query(
-      'UPDATE teams SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [name, teamId]
+      'UPDATE teams SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
+      [name, description, teamId]
     );
 
     if (result.rows.length === 0) {

@@ -328,45 +328,40 @@ router.get('/teams', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void
     }
 }));
 // Get team details
-router.get('/teams/:teamId', auth_1.authMiddleware, isTeamManager, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { teamId } = req.params;
-    const userId = req.user.id;
+router.get('/teams/:teamId', auth_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const teamId = req.params.teamId;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
     try {
-        const teamResult = yield server_1.default.query(`SELECT t.*, tm.role
-       FROM teams t
-       JOIN team_members tm ON t.id = tm.team_id
-       WHERE t.id = $1 AND tm.user_id = $2`, [teamId, userId]);
-        if (teamResult.rows.length === 0) {
-            return res.status(404).json({ message: 'Team not found or you do not have access' });
+        // Check if the user is a member of the team and get their role
+        const memberCheck = yield server_1.default.query('SELECT role FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, userId]);
+        if (memberCheck.rows.length === 0) {
+            return res.status(403).json({ message: 'You are not a member of this team' });
         }
-        const membersResult = yield server_1.default.query(`SELECT u.id, u.username, u.email, tm.role
-       FROM users u
-       JOIN team_members tm ON u.id = tm.user_id
-       WHERE tm.team_id = $1`, [teamId]);
-        const team = teamResult.rows[0];
-        team.members = membersResult.rows;
-        res.json(team);
+        const userRole = memberCheck.rows[0].role;
+        // Fetch team details
+        const teamDetails = yield server_1.default.query('SELECT * FROM teams WHERE id = $1', [teamId]);
+        // Fetch team members
+        const teamMembers = yield server_1.default.query('SELECT u.id, u.username, u.email, tm.role FROM users u JOIN team_members tm ON u.id = tm.user_id WHERE tm.team_id = $1', [teamId]);
+        res.json(Object.assign(Object.assign({}, teamDetails.rows[0]), { members: teamMembers.rows, userRole: userRole }));
     }
     catch (error) {
         console.error('Error fetching team details:', error);
-        res.status(500).json({ message: 'Failed to fetch team details' });
+        res.status(500).json({ message: 'Internal server error' });
     }
 }));
 // Update team details
 router.put('/teams/:teamId', auth_1.authMiddleware, isTeamManager, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { teamId } = req.params;
-    const { name } = req.body;
-    const userId = req.user.id;
+    const { name, description } = req.body;
     if (!name) {
         return res.status(400).json({ message: 'Team name is required' });
     }
     try {
-        // Check if the user is a manager of the team
-        const managerCheck = yield server_1.default.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2 AND role = $3', [teamId, userId, 'manager']);
-        if (managerCheck.rows.length === 0) {
-            return res.status(403).json({ message: 'You do not have permission to update this team' });
-        }
-        const result = yield server_1.default.query('UPDATE teams SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *', [name, teamId]);
+        const result = yield server_1.default.query('UPDATE teams SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *', [name, description, teamId]);
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Team not found' });
         }
