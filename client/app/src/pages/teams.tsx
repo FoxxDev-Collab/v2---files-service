@@ -49,8 +49,10 @@ const TeamsPage: React.FC = () => {
 
   useEffect(() => {
     fetchTeams();
-    fetchSystemUsers();
-  }, []);
+    if (user?.role === 'site_admin' || user?.role === 'application_admin') {
+      fetchSystemUsers();
+    }
+  }, [user]);
 
   const fetchTeams = async () => {
     try {
@@ -65,13 +67,15 @@ const TeamsPage: React.FC = () => {
   };
 
   const fetchSystemUsers = async () => {
+    if (user?.role !== 'site_admin' && user?.role !== 'application_admin') {
+      return; // Don't fetch system users for non-admin users
+    }
     try {
       const response = await api.get('/auth/users');
       setSystemUsers(response.data);
-      setError(null);
     } catch (error) {
       console.error('Error fetching system users:', error);
-      setError('Failed to fetch system users. Please try again.');
+      // Don't set an error for non-admin users
     }
   };
 
@@ -127,8 +131,13 @@ const TeamsPage: React.FC = () => {
       await api.post('/auth/teams', { name: newTeamName });
       setNewTeamName('');
       fetchTeams();
-    } catch (error) {
+      setSuccessMessage('Team created successfully');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error: any) {
       console.error('Error creating team:', error);
+      setError(error.response?.data?.message || 'Failed to create team. Please try again.');
     }
   };
 
