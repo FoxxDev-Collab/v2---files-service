@@ -401,6 +401,21 @@ router.get('/teams', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/users-for-team', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, username, first_name, last_name, email 
+      FROM users 
+      WHERE is_active = true
+      ORDER BY username
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching users for team:', error);
+    res.status(500).json({ message: 'Failed to fetch users' });
+  }
+});
+
 // Get team details
 router.get('/teams/:teamId', authMiddleware, async (req: AuthenticatedRequest, res: express.Response) => {
   const teamId = req.params.teamId;

@@ -38,7 +38,7 @@ const TeamsPage: React.FC = () => {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
   const [newMemberId, setNewMemberId] = useState<number | ''>('');
-  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<SystemUser[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [teamDescription, setTeamDescription] = useState('');
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
@@ -49,10 +49,8 @@ const TeamsPage: React.FC = () => {
 
   useEffect(() => {
     fetchTeams();
-    if (user?.role === 'site_admin' || user?.role === 'application_admin') {
-      fetchSystemUsers();
-    }
-  }, [user]);
+    fetchAvailableUsers();
+  }, []);
 
   const fetchTeams = async () => {
     try {
@@ -66,16 +64,13 @@ const TeamsPage: React.FC = () => {
     }
   };
 
-  const fetchSystemUsers = async () => {
-    if (user?.role !== 'site_admin' && user?.role !== 'application_admin') {
-      return; // Don't fetch system users for non-admin users
-    }
+  const fetchAvailableUsers = async () => {
     try {
-      const response = await api.get('/auth/users');
-      setSystemUsers(response.data);
+      const response = await api.get('/auth/users-for-team');
+      setAvailableUsers(response.data);
     } catch (error) {
-      console.error('Error fetching system users:', error);
-      // Don't set an error for non-admin users
+      console.error('Error fetching available users:', error);
+      setError('Failed to fetch available users. Please try again.');
     }
   };
 
@@ -339,7 +334,7 @@ const TeamsPage: React.FC = () => {
                     className="flex-1 p-2 border rounded-l"
                   >
                     <option value="">Select a user</option>
-                    {systemUsers.map((user) => (
+                    {availableUsers.map((user) => (
                       <option key={user.id} value={user.id}>
                         {user.username} - {user.firstName} {user.lastName} ({user.email})
                       </option>
