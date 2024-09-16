@@ -129,7 +129,7 @@ const Profile: React.FC = () => {
         {/* Right Column: Teams Information */}
         <div className="w-full md:w-1/2 px-2 mb-4">
           <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-            <h2 className="text-xl font-semibold mb-2">Teams</h2>
+            <h2 className="text-xl font-semibold mb-2">Team Membership</h2>
             {user.teams && user.teams.length > 0 ? (
               <ul>
                 {user.teams.map(team => (
