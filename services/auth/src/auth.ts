@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'test@69lol';
+const JWT_SECRET = process.env.JWT_SECRET || 'Gqy3INLI2eH6N9RuX7IeSzpr';
 
 interface User {
   id: string;

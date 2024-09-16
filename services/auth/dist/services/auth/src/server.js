@@ -9,7 +9,7 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const path_1 = __importDefault(require("path"));
 const pg_1 = require("pg");
 const dotenv_1 = __importDefault(require("dotenv"));
-const logger_1 = __importDefault(require("../../utils/logger"));
+const logger_1 = __importDefault(require("../../../utils/logger"));
 dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../../../.env') });
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
