@@ -145,8 +145,11 @@ const TeamsPage: React.FC = () => {
       await api.post(`/auth/teams/${selectedTeam.id}/members`, { userId: newMemberId, role: 'member' });
       setNewMemberId('');
       fetchTeamDetails(selectedTeam.id);
+      setSuccessMessage('Team member added successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       console.error('Error adding team member:', error);
+      setError('Failed to add team member. Please try again.');
     }
   };
 
@@ -155,8 +158,11 @@ const TeamsPage: React.FC = () => {
     try {
       await api.delete(`/auth/teams/${selectedTeam.id}/members/${userId}`);
       fetchTeamDetails(selectedTeam.id);
+      setSuccessMessage('Team member removed successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       console.error('Error removing team member:', error);
+      setError('Failed to remove team member. Please try again.');
     }
   };
 
@@ -165,8 +171,11 @@ const TeamsPage: React.FC = () => {
     try {
       await api.put(`/auth/teams/${selectedTeam.id}/members/${userId}/role`, { role: 'manager' });
       fetchTeamDetails(selectedTeam.id);
+      setSuccessMessage('Team member promoted to manager successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       console.error('Error promoting team member:', error);
+      setError('Failed to promote team member. Please try again.');
     }
   };
 
@@ -176,8 +185,11 @@ const TeamsPage: React.FC = () => {
       await api.delete(`/auth/teams/${selectedTeam.id}`);
       setSelectedTeam(null);
       fetchTeams();
+      setSuccessMessage('Team deleted successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       console.error('Error deleting team:', error);
+      setError('Failed to delete team. Please try again.');
     }
   };
 
@@ -226,7 +238,7 @@ const TeamsPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-8 overflow-y-auto">
         {successMessage && <SuccessMessage message={successMessage} />}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
@@ -236,20 +248,20 @@ const TeamsPage: React.FC = () => {
         )}
         {selectedTeam ? (
           <div className='mb-8'>
-          <h2 className="inline-block text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-400 mb-2">
-    {selectedTeam.name}
-  </h2>
-          <p className="mb-4">
-            Your role in this team: {' '}
-            <span 
-              className="font-semibold text-blue-600 px-2 py-1 rounded 
-                         shadow-[0_0_10px_rgba(59,130,246,0.5)] 
-                         transition-all duration-300 ease-in-out
-                         hover:shadow-[0_0_15px_rgba(59,130,246,0.7)]"
-            >
-              {capitalizeFirstLetter(selectedTeam.members?.find(member => member.id === user?.id)?.role || 'Unknown')}
-            </span>
-          </p>
+            <h2 className="inline-block text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-400 mb-2">
+              {selectedTeam.name}
+            </h2>
+            <p className="mb-4">
+              Your role in this team: {' '}
+              <span 
+                className="font-semibold text-blue-600 px-2 py-1 rounded 
+                           shadow-[0_0_10px_rgba(59,130,246,0.5)] 
+                           transition-all duration-300 ease-in-out
+                           hover:shadow-[0_0_15px_rgba(59,130,246,0.7)]"
+              >
+                {capitalizeFirstLetter(selectedTeam.members?.find(member => member.id === user?.id)?.role || 'Unknown')}
+              </span>
+            </p>
             {/* Team Members and Description */}
             <div className="flex flex-wrap -mx-2 mb-8">
               {/* Team Members */}
@@ -320,26 +332,9 @@ const TeamsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Team Folders Placeholder */}
-            <div className="bg-white shadow rounded-lg p-4 mb-8">
-              <h3 className="text-xl font-semibold mb-2">Team Folders</h3>
-              <p className="text-gray-600">Placeholder for team document sharing. Coming soon!</p>
-            </div>
-
-            {/* Team Rooms Placeholder */}
-            <div className="bg-white shadow rounded-lg p-4 mb-8">
-              <h3 className="text-xl font-semibold mb-2">Team Rooms</h3>
-              <p className="text-gray-600">Placeholder for team chat rooms. Coming soon!</p>
-            </div>
-
-            {/* Team Projects Placeholder */}
-            <div className="bg-white shadow rounded-lg p-4 mb-8">
-              <h3 className="text-xl font-semibold mb-2">Team Projects</h3>
-              <p className="text-gray-600">Placeholder for team projects and tasks. Coming soon!</p>
-            </div>
-            
+            {/* Add Member Section */}
             {isTeamManager(selectedTeam) && (
-              <div className="mt-8">
+              <div className="w-full px-2 mb-4">
                 <h3 className="text-xl font-semibold mb-2">Add Member</h3>
                 <div className="flex">
                   <select
@@ -363,7 +358,24 @@ const TeamsPage: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
+            {/* Team Folders Placeholder */}
+            <div className="bg-white shadow rounded-lg p-4 mb-8">
+              <h3 className="text-xl font-semibold mb-2">Team Folders</h3>
+              <p className="text-gray-600">Placeholder for team document sharing. Coming soon!</p>
+            </div>
+
+            {/* Team Rooms Placeholder */}
+            <div className="bg-white shadow rounded-lg p-4 mb-8">
+              <h3 className="text-xl font-semibold mb-2">Team Rooms</h3>
+              <p className="text-gray-600">Placeholder for team chat rooms. Coming soon!</p>
+            </div>
+
+            {/* Team Projects Placeholder */}
+            <div className="bg-white shadow rounded-lg p-4 mb-8">
+              <h3 className="text-xl font-semibold mb-2">Team Projects</h3>
+              <p className="text-gray-600">Placeholder for team projects and tasks. Coming soon!</p>
+            </div>
             {isTeamManager(selectedTeam) && (
               <button
                 onClick={deleteTeam}
