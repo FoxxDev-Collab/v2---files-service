@@ -149,24 +149,38 @@ router.post('/login', async (req, res) => {
 });
 
 // Get user profile
+// Get user profile
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).user.id;
-    const result = await pool.query(
+    const userResult = await pool.query(
       'SELECT u.id, u.username, u.email, u.first_name, u.last_name, u.timezone, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = $1',
       [userId]
     );
     
-    if (result.rows.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json(result.rows[0]);
+    const user = userResult.rows[0];
+
+    // Fetch user's teams
+    const teamsResult = await pool.query(
+      `SELECT t.id, t.name, tm.role 
+       FROM teams t 
+       JOIN team_members tm ON t.id = tm.team_id 
+       WHERE tm.user_id = $1`,
+      [userId]
+    );
+
+    user.teams = teamsResult.rows;
+
+    res.json(user);
   } catch (error) {
-    serverErrorResponse(res, error);
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
-
 // Update user profile
 router.put('/profile', authMiddleware, async (req, res) => {
   try {

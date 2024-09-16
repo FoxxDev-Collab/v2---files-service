@@ -271,31 +271,6 @@ yarn-error.log*
 next-env.d.ts
 
 ================
-File: client/app/Dockerfile
-================
-FROM node:20
-
-WORKDIR /usr/src/app
-
-# Copy package.json and package-lock.json
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the client code
-COPY . .
-
-# Build the Next.js app
-RUN npm run build
-
-# Expose the port the app runs on
-EXPOSE 3000
-
-# Command to run the application
-CMD ["npm", "start"]
-
-================
 File: client/app/next.config.js
 ================
 /** @type {import('next').NextConfig} */
@@ -2218,125 +2193,9 @@ File: client/app/tsconfig.json
 }
 
 ================
-File: docker-compose.yml
-================
-services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: newcloud
-      POSTGRES_USER: newcloud_user
-      POSTGRES_PASSWORD: foxxdev1dt431
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - 5432:5432
-    healthcheck:
-      # trunk-ignore(yamllint/quoted-strings)
-      test: ["CMD-SHELL", "pg_isready -U newcloud_user -d newcloud"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-  gateway:
-    build: 
-      context: ./gateway
-      dockerfile: Dockerfile
-    ports:
-      - 4000:4000
-    environment:
-      - AUTH_SERVICE_URL=http://auth:3001
-      - CLIENT_APP_URL=http://client:3000
-    depends_on:
-      - auth
-      - client
-
-  auth:
-    build: 
-      context: .
-      dockerfile: services/auth/Dockerfile
-    expose:
-      - 3001  
-    ports:
-      - 3001:3001
-    environment:
-      - NODE_ENV=production
-      - DB_USER=newcloud_user
-      - DB_HOST=postgres
-      - DB_NAME=newcloud
-      - DB_PASSWORD=foxxdev1dt431
-      - DB_PORT=5432
-      - JWT_SECRET=test@69lol
-      - FRONTEND_URL=http://localhost:3000
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./services/auth/uploads:/usr/src/app/uploads
-
-  client:
-    build:
-      context: ./client/app
-      dockerfile: Dockerfile
-    expose:
-      - 3000  
-    ports:
-      - 3000:3000
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://localhost:3001
-    depends_on:
-      - auth
-
-volumes:
-  postgres_data:
-  uploads_data:
-
-================
-File: Dockerfile
-================
-FROM node:20
-
-WORKDIR /usr/src/app
-
-# Copy package.json and package-lock.json
-COPY client/app/package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the client code
-COPY client/app .
-
-# Build the Next.js app
-RUN npm run build
-
-# Expose the port the app runs on
-EXPOSE 3000
-
-# Command to run the application
-CMD [ "npm", "start" ]
-
-================
 File: gateway/dist/index.js
 ================
 "use strict";
-
-================
-File: gateway/Dockerfile
-================
-FROM node:20
-
-WORKDIR /usr/src/app
-
-COPY package*.json ./
-RUN npm install
-
-COPY . .
-RUN npm run build
-
-EXPOSE 4000
-CMD ["npm", "start"]
 
 ================
 File: gateway/package.json
